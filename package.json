@@ -15,7 +15,10 @@
     "typescript"
   ],
   "license": "MIT",
-  "author": "Tuan Nguyen",
+  "author": {
+    "name": "Coderkaine",
+    "url": "https://www.coderkaine.com"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lau-sam/identite-ts.git"

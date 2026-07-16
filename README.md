@@ -122,4 +122,4 @@ cd playground && npm install && npm run dev   # démo locale
 
 ## Licence
 
-MIT
+MIT — © [Coderkaine](https://www.coderkaine.com)
