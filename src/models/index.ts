@@ -1,5 +1,8 @@
-/** Provenance d'une donnée extraite. */
-export type SourceDonnee = 'mrz' | '2ddoc' | 'nir' | 'insee';
+/**
+ * Provenance d'une donnée extraite. `ocr` = zone visuelle lue sans code de
+ * contrôle : la moins fiable, jamais accompagnée de `checksumValide`.
+ */
+export type SourceDonnee = 'mrz' | '2ddoc' | 'nir' | 'insee' | 'ocr';
 
 /** Date complète au format ISO `YYYY-MM-DD`. */
 export type DateISO = string;

@@ -170,7 +170,12 @@ async function tenterNir(
       if (commune) lieu.commune = commune.nom;
     }
 
+    const identiteVisuelle = detecterNomVitale(texte, nir.nir);
     const data: Identite = {
+      ...(identiteVisuelle ? { nom: { valeur: identiteVisuelle.nom, source: 'ocr' } } : {}),
+      ...(identiteVisuelle?.prenoms.length
+        ? { prenoms: { valeur: identiteVisuelle.prenoms, source: 'ocr' } }
+        : {}),
       sexe: champNir(nir.sexe, fiable),
       dateNaissance: champNir(
         {
@@ -300,6 +305,54 @@ function* produitCartesien(listes: string[][]): Generator<string[]> {
       yield [valeur, ...suite];
     }
   }
+}
+
+/** Mots imprimés sur la carte Vitale qui ne sont jamais un nom. */
+const MOTS_VITALE = new Set([
+  'VITALE',
+  'CARTE',
+  'ASSURANCE',
+  'MALADIE',
+  'SPECIMEN',
+  'EMISE',
+  'CPAM',
+  'SECURITE',
+  'SOCIALE',
+]);
+
+/**
+ * Lit le nom et le prénom imprimés au-dessus du NIR sur une carte Vitale.
+ * Pur OCR sans code de contrôle : best-effort, source `ocr`.
+ * Deux lignes : la plus haute porte le(s) prénom(s), la plus basse le nom.
+ * Une seule ligne : le dernier mot est traité comme le nom.
+ */
+function detecterNomVitale(
+  texte: string,
+  nir: string,
+): { nom: string; prenoms: string[] } | undefined {
+  const lignes = texte.split('\n').map((l) => l.trim());
+  const indexNir = lignes.findIndex((l) => l.replace(/[\s.-]/g, '').includes(nir.slice(0, 9)));
+  if (indexNir <= 0) return undefined;
+
+  const candidates: string[] = [];
+  for (let i = indexNir - 1; i >= 0 && candidates.length < 2; i--) {
+    const ligne = lignes[i] as string;
+    if (ligne === '') continue;
+    const mots = ligne.split(/\s+/);
+    const estNom =
+      /^[A-Z\u00C0-\u00DE' -]{2,}$/.test(ligne) && !mots.some((m) => MOTS_VITALE.has(m));
+    if (!estNom) break;
+    candidates.unshift(ligne);
+  }
+  if (candidates.length === 0) return undefined;
+
+  if (candidates.length === 2) {
+    const [lignePrenoms, ligneNom] = candidates as [string, string];
+    return { nom: ligneNom, prenoms: lignePrenoms.split(/\s+/) };
+  }
+  const mots = (candidates[0] as string).split(/\s+/);
+  if (mots.length < 2) return { nom: mots[0] as string, prenoms: [] };
+  return { nom: mots[mots.length - 1] as string, prenoms: mots.slice(0, -1) };
 }
 
 /** Repère un NIR (avec ou sans clé) dans du texte OCR. */

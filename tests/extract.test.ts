@@ -109,6 +109,38 @@ describe('extractDocument via NIR', () => {
     expect(r.raw.nir).toBe('2690575056157');
   });
 
+  it('récupère nom et prénom imprimés au-dessus du NIR (source ocr)', async () => {
+    const r = await extractDocument(
+      IMAGE_FACTICE,
+      optionsAvec({
+        ocrTexte:
+          'Vitale\ncarte d’assurance maladie\nNATHALIE\nDURAND\n2 69 05 75 056 157 12\nSPECIMEN',
+      }),
+    );
+    expect(r.data?.prenoms?.valeur).toEqual(['NATHALIE']);
+    expect(r.data?.nom?.valeur).toBe('DURAND');
+    expect(r.data?.nom?.source).toBe('ocr');
+    expect(r.data?.nom?.checksumValide).toBeUndefined();
+  });
+
+  it('sépare nom et prénom quand ils sont sur la même ligne', async () => {
+    const r = await extractDocument(
+      IMAGE_FACTICE,
+      optionsAvec({ ocrTexte: 'CARTE VITALE\nNATHALIE DURAND\n2 69 05 75 056 157 12' }),
+    );
+    expect(r.data?.prenoms?.valeur).toEqual(['NATHALIE']);
+    expect(r.data?.nom?.valeur).toBe('DURAND');
+  });
+
+  it("n'invente pas de nom quand rien n'est lisible au-dessus du NIR", async () => {
+    const r = await extractDocument(
+      IMAGE_FACTICE,
+      optionsAvec({ ocrTexte: 'carte d’assurance maladie\n2 69 05 75 056 157 12' }),
+    );
+    expect(r.data?.nom).toBeUndefined();
+    expect(r.data?.prenoms).toBeUndefined();
+  });
+
   it('peut désactiver la résolution INSEE', async () => {
     const r = await extractDocument(IMAGE_FACTICE, {
       ...optionsAvec({ ocrTexte: '2 69 05 75 056 157 12' }),
