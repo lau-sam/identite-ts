@@ -1,0 +1,60 @@
+{
+  "name": "identite-ts",
+  "version": "0.0.0",
+  "description": "Extraction côté client de données structurées depuis les documents d'identité français (CNI, passeport, carte Vitale) : MRZ, NIR, 2D-DOC.",
+  "keywords": [
+    "cni",
+    "passeport",
+    "carte-vitale",
+    "mrz",
+    "nir",
+    "2d-doc",
+    "identite",
+    "france",
+    "ocr",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Tuan Nguyen",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./insee": {
+      "types": "./dist/insee/index.d.ts",
+      "import": "./dist/insee/index.js",
+      "require": "./dist/insee/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.4",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true
+  }
+}
