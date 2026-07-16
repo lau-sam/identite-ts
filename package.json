@@ -20,19 +20,34 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./insee": {
-      "types": "./dist/insee/index.d.ts",
-      "import": "./dist/insee/index.js",
-      "require": "./dist/insee/index.cjs"
+      "import": {
+        "types": "./dist/insee/index.d.ts",
+        "default": "./dist/insee/index.js"
+      },
+      "require": {
+        "types": "./dist/insee/index.d.cts",
+        "default": "./dist/insee/index.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "insee": ["./dist/insee/index.d.ts"]
+    }
+  },
   "files": [
     "dist"
   ],
@@ -49,8 +64,10 @@
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@biomejs/biome": "^2.5.4",
     "@types/node": "^26.1.1",
+    "publint": "^0.3.21",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
