@@ -202,13 +202,14 @@ function champNir<T>(valeur: T, checksumValide: boolean): Champ<T> {
  * réduite à sa bande basse (`fraction` < 1).
  */
 async function copieBinarisee(image: ImageData, fraction: number): Promise<ImageData> {
-  const { binariser, rognerBas } = await import('./image/preprocess');
+  const { binariser, niveauxDeGris, rognerBas } = await import('./image/preprocess');
   const zone = fraction < 1 ? rognerBas(image, fraction) : image;
   const data = new Uint8ClampedArray(zone.data);
   const copie =
     typeof ImageData !== 'undefined'
       ? new ImageData(data, zone.width, zone.height)
       : ({ width: zone.width, height: zone.height, data } as ImageData);
+  niveauxDeGris(copie); // l'image préparée reste en couleur
   binariser(copie);
   return copie;
 }
@@ -263,8 +264,13 @@ function meilleureCombinaison(candidates: string[], longueur: number): string[] 
       const mrz = parseMrz(combo);
       const valides = Object.values(mrz.checksums).filter((v) => v === true).length;
       // La zone nom n'a pas de checksum : les chiffres y sont forcément des
-      // parasites OCR, on pénalise pour départager les fenêtres ex æquo.
-      const score = valides * 1000 - chiffresZoneNom(mrz.format, combo);
+      // parasites OCR. Une fenêtre sans date de naissance ou sans sexe est
+      // presque toujours décalée : pénalités pour départager.
+      const score =
+        valides * 1000 -
+        (mrz.identite.dateNaissance ? 0 : 400) -
+        (mrz.identite.sexe ? 0 : 150) -
+        chiffresZoneNom(mrz.format, combo);
       if (!meilleur || score > meilleur.score) meilleur = { lignes: combo, score };
     } catch {
       // combinaison sans forme valide : ignorée

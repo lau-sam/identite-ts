@@ -12,15 +12,14 @@ export interface ImageDataLike {
 const LARGEUR_MAX = 1600;
 
 /**
- * Convertit une entrée quelconque en ImageData redimensionnée, en niveaux de
- * gris et au contraste étiré — le format attendu par les engines.
+ * Convertit une entrée quelconque en ImageData redimensionnée, en couleur.
+ * Chaque passe d'extraction applique ensuite son propre traitement (la
+ * binarisation pour la MRZ) : dégrader l'image globalement pénalise l'OCR
+ * généraliste, meilleur sur l'originale (validé sur carte Vitale).
  * Nécessite un environnement navigateur (OffscreenCanvas + createImageBitmap).
  */
 export async function preparerImage(input: ImageInput): Promise<ImageData> {
-  const imageData = await versImageData(input);
-  niveauxDeGris(imageData);
-  etirerContraste(imageData);
-  return imageData;
+  return versImageData(input);
 }
 
 async function versImageData(input: ImageInput): Promise<ImageData> {

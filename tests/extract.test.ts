@@ -142,6 +142,21 @@ describe('detecterMrz robustesse OCR', () => {
   });
 });
 
+describe('detecterMrz insertion OCR au milieu de ligne', () => {
+  it('choisit la fenêtre qui donne une vraie date de naissance', async () => {
+    // insertion OCR simulée : 'HERVE' lu 'HERV0E' → ligne de 37 caractères
+    const texte = [
+      'IDFRALOISEAU<<<<<<<<<<<<<<<<<<<<<<<<',
+      '970675K002774HERV0E<<DJAMEL<7303216M4',
+    ].join('\n');
+    const r = await extractDocument(IMAGE_FACTICE, optionsAvec({ ocrMrz: texte }));
+    expect(r.source).toBe('mrz');
+    expect(r.data?.dateNaissance?.valeur).toBe('1973-03-21');
+    expect(r.data?.dateNaissance?.checksumValide).toBe(true);
+    expect(r.data?.sexe?.valeur).toBe('M');
+  });
+});
+
 describe('extractDocument sans détection', () => {
   it('renvoie unknown sans jeter, avec le texte brut pour debug', async () => {
     const r = await extractDocument(

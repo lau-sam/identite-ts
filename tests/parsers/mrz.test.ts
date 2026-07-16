@@ -75,6 +75,14 @@ describe('parseMrz IDFRA (ancienne CNI)', () => {
 });
 
 describe('parseMrz robustesse', () => {
+  it("n'émet pas de date de naissance quand la zone n'est pas numérique", () => {
+    // fenêtre OCR décalée : la zone date contient un chevron
+    const l2 = '970675K002774HERVE<<DJAMEL<<7303216M';
+    const r = parseMrz(['IDFRALOISEAU<<<<<<<<<<<<<<<<<<<<<<<<', l2]);
+    expect(r.identite.dateNaissance).toBeUndefined();
+    expect(r.checksums.dateNaissance).toBe(false);
+  });
+
   it('normalise casse et espaces parasites', () => {
     const r = parseMrz([` ${TD3[0].toLowerCase()} `, TD3[1]]);
     expect(r.identite.nom?.valeur).toBe('ERIKSSON');
