@@ -1,5 +1,9 @@
 # identite-ts 🇫🇷
 
+[![CI](https://github.com/lau-sam/identite-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/lau-sam/identite-ts/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/identite-ts)](https://www.npmjs.com/package/identite-ts)
+[![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](./LICENSE)
+
 > Bibliothèque TypeScript légère et 100 % côté client pour extraire des données JSON structurées à partir de photos de documents d'identité français (CNI, passeport, carte Vitale). Idéale pour l'auto-remplissage de formulaires dans les applications React, Vue, Svelte, Angular ou Vanilla JS.
 
 ## 🚀 L'objectif

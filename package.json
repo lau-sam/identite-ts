@@ -16,6 +16,14 @@
   ],
   "license": "MIT",
   "author": "Tuan Nguyen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lau-sam/identite-ts.git"
+  },
+  "homepage": "https://github.com/lau-sam/identite-ts#readme",
+  "bugs": {
+    "url": "https://github.com/lau-sam/identite-ts/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
