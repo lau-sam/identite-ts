@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>identite-ts — playground</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.4rem;
+      }
+      #zone {
+        border: 2px dashed color-mix(in srgb, currentColor 40%, transparent);
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+      }
+      #zone.actif {
+        border-color: #4f8cff;
+      }
+      #statut {
+        margin: 1rem 0;
+        font-style: italic;
+      }
+      #resultat {
+        white-space: pre-wrap;
+        background: color-mix(in srgb, currentColor 8%, transparent);
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: ui-monospace, monospace;
+        font-size: 0.85rem;
+        overflow-x: auto;
+      }
+      img#apercu {
+        max-width: 100%;
+        max-height: 240px;
+        display: none;
+        margin: 1rem auto;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>identite-ts 🇫🇷 — playground</h1>
+    <p>
+      Dépose la photo d'un document français (CNI, passeport, carte Vitale). Tout est traité
+      localement dans ton navigateur — rien n'est envoyé sur un serveur.
+    </p>
+    <div id="zone">
+      Dépose une image ici, ou clique pour choisir un fichier
+      <input id="fichier" type="file" accept="image/*" capture="environment" hidden />
+    </div>
+    <img id="apercu" alt="Aperçu du document" />
+    <p id="statut"></p>
+    <pre id="resultat"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
