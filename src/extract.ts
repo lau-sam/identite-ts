@@ -3,7 +3,7 @@ import type { OcrOptions } from './engines/ocr';
 import type { DatamatrixEngine, OcrEngine } from './engines/types';
 import type { ImageInput } from './image/preprocess';
 import type { Champ, Identite } from './models/index';
-import { parseMrz } from './parsers/mrz';
+import { type MrzResult, parseMrz } from './parsers/mrz';
 import { parseNir } from './parsers/nir';
 import { parse2ddoc } from './parsers/twoddoc';
 
@@ -119,26 +119,31 @@ async function tenterMrz(
 ): Promise<ExtractionResult | undefined> {
   // La binarisation élimine les fonds guillochés des documents sécurisés,
   // sans quoi l'OCR de la MRZ échoue (validé sur le spécimen CNI 2021).
-  const texte = await ocr.reconnaitre(await copieBinarisee(image), 'mrz');
-  raw.texteOcr = texte;
-  const lignes = detecterMrz(texte);
-  if (!lignes) return undefined;
-  raw.lignesMrz = lignes;
+  // Deuxième passe sur la bande basse : la MRZ y est toujours, et l'OCR
+  // décroche souvent sur la carte entière (photo, adresse, décor).
+  for (const fraction of [1, 0.45]) {
+    const texte = await ocr.reconnaitre(await copieBinarisee(image, fraction), 'mrz');
+    raw.texteOcr = [raw.texteOcr, texte].filter(Boolean).join('\n');
+    const lignes = detecterMrz(texte);
+    if (!lignes) continue;
+    raw.lignesMrz = lignes;
 
-  try {
-    const mrz = parseMrz(lignes);
-    const controles = Object.values(mrz.checksums);
-    const valides = controles.filter(Boolean).length;
-    return {
-      document: mrz.document,
-      data: mrz.identite,
-      confidence: mrz.valide ? 0.95 : 0.7 * (valides / controles.length),
-      source: 'mrz',
-      raw,
-    };
-  } catch {
-    return undefined;
+    try {
+      const mrz = parseMrz(lignes);
+      const controles = Object.values(mrz.checksums);
+      const valides = controles.filter(Boolean).length;
+      return {
+        document: mrz.document,
+        data: mrz.identite,
+        confidence: mrz.valide ? 0.95 : 0.7 * (valides / controles.length),
+        source: 'mrz',
+        raw,
+      };
+    } catch {
+      // forme finalement invalide : passe suivante
+    }
   }
+  return undefined;
 }
 
 async function tenterNir(
@@ -192,22 +197,30 @@ function champNir<T>(valeur: T, checksumValide: boolean): Champ<T> {
   return { valeur, source: 'nir', checksumValide };
 }
 
-/** Copie binarisée (Otsu) de l'image, sans muter l'originale. */
-async function copieBinarisee(image: ImageData): Promise<ImageData> {
-  const { binariser } = await import('./image/preprocess');
-  const data = new Uint8ClampedArray(image.data);
+/**
+ * Copie binarisée (Otsu) de l'image, sans muter l'originale, optionnellement
+ * réduite à sa bande basse (`fraction` < 1).
+ */
+async function copieBinarisee(image: ImageData, fraction: number): Promise<ImageData> {
+  const { binariser, rognerBas } = await import('./image/preprocess');
+  const zone = fraction < 1 ? rognerBas(image, fraction) : image;
+  const data = new Uint8ClampedArray(zone.data);
   const copie =
     typeof ImageData !== 'undefined'
-      ? new ImageData(data, image.width, image.height)
-      : ({ width: image.width, height: image.height, data } as ImageData);
+      ? new ImageData(data, zone.width, zone.height)
+      : ({ width: zone.width, height: zone.height, data } as ImageData);
   binariser(copie);
   return copie;
 }
 
+/** Tolérance de caractères parasites (décor lu par l'OCR) autour d'une ligne MRZ. */
+const PARASITES_MAX = 3;
+
 /**
  * Repère des lignes MRZ dans du texte OCR : lignes en `A-Z0-9<` (espaces
  * parasites retirés) groupées par forme connue — 2×44 (TD3), 2×36 (IDFRA),
- * 3×30 (TD1).
+ * 3×30 (TD1). Les lignes légèrement trop longues (décor lu comme caractère)
+ * sont fenêtrées : la combinaison maximisant les checksums valides gagne.
  */
 export function detecterMrz(texte: string): string[] | undefined {
   const lignes = texte
@@ -221,10 +234,66 @@ export function detecterMrz(texte: string): string[] | undefined {
     { longueur: 30, nombre: 3 },
   ];
   for (const { longueur, nombre } of formes) {
-    const candidates = lignes.filter((l) => l.length === longueur);
-    if (candidates.length >= nombre) return candidates.slice(0, nombre);
+    const candidates = lignes.filter(
+      (l) => l.length >= longueur && l.length <= longueur + PARASITES_MAX,
+    );
+    if (candidates.length < nombre) continue;
+    const meilleure = meilleureCombinaison(candidates.slice(0, nombre), longueur);
+    if (meilleure) return meilleure;
   }
   return undefined;
+}
+
+/**
+ * Essaie toutes les fenêtres de la longueur cible dans chaque ligne candidate
+ * et retient la combinaison dont le plus de checksums MRZ passent.
+ */
+function meilleureCombinaison(candidates: string[], longueur: number): string[] | undefined {
+  const fenetresParLigne = candidates.map((ligne) => {
+    const fenetres: string[] = [];
+    for (let debut = 0; debut + longueur <= ligne.length; debut++) {
+      fenetres.push(ligne.slice(debut, debut + longueur));
+    }
+    return fenetres;
+  });
+
+  let meilleur: { lignes: string[]; score: number } | undefined;
+  for (const combo of produitCartesien(fenetresParLigne)) {
+    try {
+      const mrz = parseMrz(combo);
+      const valides = Object.values(mrz.checksums).filter((v) => v === true).length;
+      // La zone nom n'a pas de checksum : les chiffres y sont forcément des
+      // parasites OCR, on pénalise pour départager les fenêtres ex æquo.
+      const score = valides * 1000 - chiffresZoneNom(mrz.format, combo);
+      if (!meilleur || score > meilleur.score) meilleur = { lignes: combo, score };
+    } catch {
+      // combinaison sans forme valide : ignorée
+    }
+  }
+  return meilleur && meilleur.score >= 1000 ? meilleur.lignes : undefined;
+}
+
+function chiffresZoneNom(format: MrzResult['format'], lignes: string[]): number {
+  const zone =
+    format === 'td1'
+      ? (lignes[2] as string)
+      : format === 'td3'
+        ? (lignes[0] as string).slice(5)
+        : (lignes[0] as string).slice(5, 30);
+  return (zone.match(/\d/g) ?? []).length;
+}
+
+function* produitCartesien(listes: string[][]): Generator<string[]> {
+  if (listes.length === 0) {
+    yield [];
+    return;
+  }
+  const [tete, ...reste] = listes as [string[], ...string[][]];
+  for (const valeur of tete) {
+    for (const suite of produitCartesien(reste)) {
+      yield [valeur, ...suite];
+    }
+  }
 }
 
 /** Repère un NIR (avec ou sans clé) dans du texte OCR. */

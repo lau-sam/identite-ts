@@ -119,6 +119,29 @@ describe('extractDocument via NIR', () => {
   });
 });
 
+describe('detecterMrz robustesse OCR', () => {
+  it('élimine les caractères parasites autour des lignes MRZ (fenêtrage par checksums)', async () => {
+    // parasites en tête de ligne : étoiles/décor lus comme chiffres par l'OCR
+    const texte = [
+      'IDFRAX4RTBPFW46<<<<<<<<<<<<<<<',
+      '39007138F3002119FRA<<<<<<<<<<<6',
+      '5MARTIN<<MAELYS<GAELLE<MARIE<<<',
+    ].join('\n');
+    const r = await extractDocument(IMAGE_FACTICE, optionsAvec({ ocrMrz: texte }));
+    expect(r.source).toBe('mrz');
+    expect(r.document).toBe('cni-2021');
+    expect(r.data?.nom?.valeur).toBe('MARTIN');
+    expect(r.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('tolère un parasite en fin de ligne', async () => {
+    const texte = `${TD3[0]}4\n${TD3[1]}`;
+    const r = await extractDocument(IMAGE_FACTICE, optionsAvec({ ocrMrz: texte }));
+    expect(r.source).toBe('mrz');
+    expect(r.data?.nom?.valeur).toBe('ERIKSSON');
+  });
+});
+
 describe('extractDocument sans détection', () => {
   it('renvoie unknown sans jeter, avec le texte brut pour debug', async () => {
     const r = await extractDocument(

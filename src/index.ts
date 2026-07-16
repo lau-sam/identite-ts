@@ -6,7 +6,13 @@ export type { DatamatrixEngine, ModeOcr, OcrEngine } from './engines/types';
 export type { ExtractionResult, ExtractOptions, RawExtraction, TypeDocument } from './extract';
 export { detecterMrz, detecterNir, extractDocument } from './extract';
 export type { ImageDataLike, ImageInput } from './image/preprocess';
-export { binariser, etirerContraste, niveauxDeGris, preparerImage } from './image/preprocess';
+export {
+  binariser,
+  etirerContraste,
+  niveauxDeGris,
+  preparerImage,
+  rognerBas,
+} from './image/preprocess';
 export type {
   Champ,
   DateISO,

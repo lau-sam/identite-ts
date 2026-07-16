@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { binariser } from '../../src/image/preprocess';
+import { binariser, rognerBas } from '../../src/image/preprocess';
 
 function image(niveaux: number[]): { width: number; height: number; data: Uint8ClampedArray } {
   return {
@@ -25,5 +25,24 @@ describe('binariser', () => {
     // uniforme : tout bascule du même côté, pas de mélange
     const valeurs = [img.data[0], img.data[4], img.data[8]];
     expect(new Set(valeurs).size).toBe(1);
+  });
+});
+
+describe('rognerBas', () => {
+  it('conserve la fraction basse des lignes', () => {
+    const img = {
+      width: 2,
+      height: 4,
+      data: new Uint8ClampedArray([10, 20, 30, 40, 50, 60, 70, 80].flatMap((v) => [v, v, v, 255])),
+    };
+    const bas = rognerBas(img, 0.5);
+    expect(bas.height).toBe(2);
+    expect(bas.width).toBe(2);
+    expect([...bas.data].filter((_, i) => i % 4 === 0)).toEqual([50, 60, 70, 80]);
+  });
+
+  it('arrondit et garde au moins une ligne', () => {
+    const img = { width: 1, height: 3, data: new Uint8ClampedArray(12) };
+    expect(rognerBas(img, 0.1).height).toBe(1);
   });
 });

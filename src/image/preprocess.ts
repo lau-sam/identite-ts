@@ -61,6 +61,20 @@ export function niveauxDeGris(image: ImageDataLike): void {
 }
 
 /**
+ * Retourne une nouvelle image réduite à la fraction basse de l'originale
+ * (la zone MRZ est toujours en bas des documents). Au moins une ligne.
+ */
+export function rognerBas(image: ImageDataLike, fraction: number): ImageDataLike {
+  const hauteur = Math.max(1, Math.round(image.height * fraction));
+  const debut = (image.height - hauteur) * image.width * 4;
+  return {
+    width: image.width,
+    height: hauteur,
+    data: image.data.slice(debut),
+  };
+}
+
+/**
  * Binarise en place par seuillage d'Otsu (alpha préservé). Élimine les fonds
  * guillochés / micro-textes des documents sécurisés, décisif pour l'OCR de
  * la zone MRZ. À appliquer après conversion en niveaux de gris.
