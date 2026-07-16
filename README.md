@@ -120,6 +120,6 @@ node scripts/build-insee.ts   # régénère le référentiel des communes
 cd playground && npm install && npm run dev   # démo locale
 ```
 
-## Licence
+## Licence et auteur
 
-MIT — © [Coderkaine](https://www.coderkaine.com)
+[MIT](./LICENSE). Développé par [Coderkaine](https://www.coderkaine.com).
