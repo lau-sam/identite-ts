@@ -1,14 +1,37 @@
+<div align="center">
+
 # identite-ts 🇫🇷
+
+**Une photo de CNI, passeport ou carte Vitale → un JSON typé. 100 % dans le navigateur.**
 
 [![CI](https://github.com/lau-sam/identite-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/lau-sam/identite-ts/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/identite-ts)](https://www.npmjs.com/package/identite-ts)
 [![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](./LICENSE)
 
-> Bibliothèque TypeScript légère et 100 % côté client pour extraire des données JSON structurées à partir de photos de documents d'identité français (CNI, passeport, carte Vitale). Idéale pour l'auto-remplissage de formulaires dans les applications React, Vue, Svelte, Angular ou Vanilla JS.
+<img src="docs/demo.gif" alt="Démo : une photo de document d'identité français est déposée dans le navigateur et ressort en JSON structuré" width="720" />
+
+</div>
 
 ## 🚀 L'objectif
 
-Remplir des formulaires d'identité (nom, prénoms, date de naissance…) est fastidieux et source d'erreurs. `identite-ts` résout ce problème : l'utilisateur photographie son document, votre application reçoit un objet JSON typé.
+Remplir des formulaires d'identité (nom, prénoms, date de naissance…) est fastidieux et source d'erreurs. `identite-ts` résout ce problème : l'utilisateur photographie son document, votre application reçoit un objet JSON typé — sans qu'aucune donnée ne quitte son navigateur.
+
+## ⚡ Essayer en 2 minutes
+
+```bash
+git clone https://github.com/lau-sam/identite-ts && cd identite-ts
+npm install && cd playground && npm install && npm run dev
+```
+
+Pas de document sous la main ? Testez avec les **spécimens officiels** (documents fictifs publiés pour ce genre d'usage) :
+
+| Document | Spécimen | Ce que l'outil extrait |
+|---|---|---|
+| CNI 2021 (verso) | [Wikimedia Commons — carte MARTIN Maëlys](https://commons.wikimedia.org/wiki/File:Carte_identit%C3%A9_%C3%A9lectronique_fran%C3%A7aise_(2021,_verso).png) | MRZ complète, checksums 100 % valides |
+| Carte Vitale | [Wikipédia — Carte Vitale](https://fr.wikipedia.org/wiki/Carte_Vitale) | NIR + clé, sexe, naissance, département |
+| Passeport | [ICAO Doc 9303 partie 4, annexe A](https://www.icao.int/publications/doc-series/doc-9303) (spécimen « Utopia ») | MRZ TD3, identité complète |
+
+Vérifié sur ces spécimens : la CNI 2021 ressort avec **tous les checksums valides**, la carte Vitale avec **clé NIR validée** et lieu de naissance résolu.
 
 - **100 % côté client** : aucune donnée ne quitte le navigateur (RGPD par construction).
 - **Fondé sur les codes, pas seulement l'OCR** : MRZ (checksums ICAO 9303), NIR (clé 97), 2D-DOC ANTS — parsing déterministe et validable.
