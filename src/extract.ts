@@ -117,7 +117,9 @@ async function tenterMrz(
   ocr: OcrEngine,
   raw: RawExtraction,
 ): Promise<ExtractionResult | undefined> {
-  const texte = await ocr.reconnaitre(image, 'mrz');
+  // La binarisation élimine les fonds guillochés des documents sécurisés,
+  // sans quoi l'OCR de la MRZ échoue (validé sur le spécimen CNI 2021).
+  const texte = await ocr.reconnaitre(await copieBinarisee(image), 'mrz');
   raw.texteOcr = texte;
   const lignes = detecterMrz(texte);
   if (!lignes) return undefined;
@@ -188,6 +190,18 @@ async function tenterNir(
 
 function champNir<T>(valeur: T, checksumValide: boolean): Champ<T> {
   return { valeur, source: 'nir', checksumValide };
+}
+
+/** Copie binarisée (Otsu) de l'image, sans muter l'originale. */
+async function copieBinarisee(image: ImageData): Promise<ImageData> {
+  const { binariser } = await import('./image/preprocess');
+  const data = new Uint8ClampedArray(image.data);
+  const copie =
+    typeof ImageData !== 'undefined'
+      ? new ImageData(data, image.width, image.height)
+      : ({ width: image.width, height: image.height, data } as ImageData);
+  binariser(copie);
+  return copie;
 }
 
 /**

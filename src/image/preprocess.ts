@@ -60,6 +60,50 @@ export function niveauxDeGris(image: ImageDataLike): void {
   }
 }
 
+/**
+ * Binarise en place par seuillage d'Otsu (alpha préservé). Élimine les fonds
+ * guillochés / micro-textes des documents sécurisés, décisif pour l'OCR de
+ * la zone MRZ. À appliquer après conversion en niveaux de gris.
+ */
+export function binariser(image: ImageDataLike): void {
+  const d = image.data;
+  const histogramme = new Array<number>(256).fill(0);
+  let total = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    histogramme[d[i] as number] = (histogramme[d[i] as number] as number) + 1;
+    total++;
+  }
+
+  // Seuil d'Otsu : maximise la variance inter-classes.
+  let sommeTotale = 0;
+  for (let v = 0; v < 256; v++) sommeTotale += v * (histogramme[v] as number);
+  let sommeFond = 0;
+  let poidsFond = 0;
+  let varianceMax = -1;
+  let seuil = 127;
+  for (let v = 0; v < 256; v++) {
+    poidsFond += histogramme[v] as number;
+    if (poidsFond === 0) continue;
+    const poidsEncre = total - poidsFond;
+    if (poidsEncre === 0) break;
+    sommeFond += v * (histogramme[v] as number);
+    const moyenneFond = sommeFond / poidsFond;
+    const moyenneEncre = (sommeTotale - sommeFond) / poidsEncre;
+    const variance = poidsFond * poidsEncre * (moyenneFond - moyenneEncre) ** 2;
+    if (variance > varianceMax) {
+      varianceMax = variance;
+      seuil = v;
+    }
+  }
+
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (d[i] as number) > seuil ? 255 : 0;
+    d[i] = v;
+    d[i + 1] = v;
+    d[i + 2] = v;
+  }
+}
+
 /** Étire en place la dynamique de luminance sur [0, 255] (alpha préservé). */
 export function etirerContraste(image: ImageDataLike): void {
   const d = image.data;
