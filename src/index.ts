@@ -11,3 +11,5 @@ export type { MrzChecksums, MrzFormat, MrzResult } from './parsers/mrz';
 export { MrzParseError, parseMrz } from './parsers/mrz';
 export type { NirInfo, NirNaissance, TypeLieuNir } from './parsers/nir';
 export { cleNir, NirParseError, parseNir } from './parsers/nir';
+export type { TwoDDocChamp, TwoDDocData, TwoDDocHeader } from './parsers/twoddoc';
+export { parse2ddoc, TwoDDocParseError } from './parsers/twoddoc';
