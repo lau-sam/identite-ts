@@ -101,7 +101,7 @@ resolveCommune('49588'); // undefined — commune fusionnée, absente du millés
 ```ts
 interface Champ<T> {
   valeur: T;
-  source: 'mrz' | '2ddoc' | 'nir' | 'insee';
+  source: 'mrz' | '2ddoc' | 'nir' | 'insee' | 'ocr';
   checksumValide?: boolean; // présent si la source porte un checksum
 }
 ```
@@ -115,7 +115,7 @@ Votre formulaire peut ainsi pré-remplir en vert ce qui est validé par checksum
 | CNI (ancienne) | MRZ 2×36 | nom, prénoms, sexe, date de naissance, n° de carte |
 | CNI 2021 | 2D-DOC ou MRZ 3×30 | + nationalité, date d'expiration |
 | Passeport | MRZ 2×44 | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
-| Carte Vitale | NIR | sexe, année + mois de naissance, lieu de naissance (via INSEE) |
+| Carte Vitale | NIR + OCR | sexe, année + mois de naissance, lieu de naissance (via INSEE) ; nom et prénoms lus en OCR (sans checksum) |
 
 ## Limites connues
 

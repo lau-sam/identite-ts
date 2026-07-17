@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.1.0 — non publiée
+## 0.1.1 — 2026-07-17
+
+Aucun changement fonctionnel : première publication via la CI GitHub Actions
+(trusted publishing OIDC, provenance npm activée).
+
+## 0.1.0 — 2026-07-17
 
 Première version.
 
@@ -14,5 +19,11 @@ Première version.
   signature exposée brute (vérification cryptographique prévue plus tard).
 - `identite-ts/insee` : `resolveCommune`, référentiel des communes embarqué
   (chunk séparé), régénérable via `scripts/build-insee.ts`.
+- OCR robuste aux documents réels, validé sur les spécimens officiels :
+  binarisation d'Otsu contre les fonds guillochés, seconde passe sur la bande
+  basse de l'image, fenêtrage des lignes MRZ bruitées départagé par checksums,
+  dates MRZ strictement numériques.
+- Carte Vitale : lecture OCR du nom et des prénoms imprimés (`source: 'ocr'`,
+  sans garantie de checksum).
 - Moteurs OCR (tesseract.js) et Datamatrix (zxing-wasm) auto-hébergeables.
-- Playground Vite de démonstration.
+- Playground Vite de démonstration et outil `scripts/analyse-image.ts`.

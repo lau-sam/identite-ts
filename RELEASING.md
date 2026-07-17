@@ -5,18 +5,18 @@
 La publication est automatisée par `.github/workflows/release.yml` via le
 **trusted publishing** npm (OIDC) : aucun token n'est stocké dans le repo.
 
-### Configuration initiale (une seule fois)
+### Configuration initiale — ✅ faite (v0.1.0/v0.1.1, juillet 2026)
+
+Conservée pour référence si le package ou le repo change :
 
 1. Publier la toute première version manuellement (voir plus bas) — npm exige
    que le package existe avant de pouvoir lui attacher un trusted publisher.
-   Alternative : créer le package via l'interface npmjs.com.
+   La 2FA doit être activée sur le compte npm.
 2. Sur npmjs.com → package `identite-ts` → **Settings** → **Trusted publisher** :
    - Provider : GitHub Actions
-   - Organisation/utilisateur : votre compte GitHub
+   - Organisation/utilisateur : `lau-sam`
    - Repository : `identite-ts`
    - Workflow filename : `release.yml`
-3. (Conseillé) Dans les settings du package, exiger la 2FA ou le trusted
-   publishing pour toute publication.
 
 ### À chaque release
 
