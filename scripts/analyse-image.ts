@@ -6,7 +6,8 @@
  * Usage : node scripts/analyse-image.ts <image> [image…]
  */
 import { readFile } from 'node:fs/promises';
-// Importe le build (npm run build) : Node ne résout pas les imports TS sans extension.
+// Importe le build (npm run build d'abord) : Node ne résout pas les imports TS
+// sans extension. Exclu du typecheck (tsconfig) car dist/ n'existe pas en CI.
 import { detecterMrz, detecterNir, parse2ddoc, parseMrz, parseNir } from '../dist/index.js';
 
 const fichiers = process.argv.slice(2);
