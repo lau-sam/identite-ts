@@ -4,3 +4,7 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 tasks/
+.claude/
+docs/superpowers/
+docs/plans/
+specs/
