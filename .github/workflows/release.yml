@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+  # Relance manuelle : à lancer en sélectionnant le tag vX.Y.Z comme référence.
+  # Indispensable quand un incident GitHub Actions avale l'événement de push
+  # (les webhooks perdus ne sont jamais rejoués), sans avoir à recréer le tag.
+  workflow_dispatch:
 
 jobs:
   publier:
@@ -27,6 +31,12 @@ jobs:
       # Le trusted publishing exige npm >= 11.5.1.
       - name: Mettre à jour npm
         run: npm install -g npm@latest
+
+      - name: Vérifier que la référence est un tag de version
+        if: github.ref_type != 'tag'
+        run: |
+          echo "::error::Lancement depuis « $GITHUB_REF_NAME » : sélectionner le tag vX.Y.Z comme référence."
+          exit 1
 
       - name: Vérifier que le tag correspond à la version du package
         run: |
