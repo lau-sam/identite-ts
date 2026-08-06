@@ -8,6 +8,14 @@ function checksumDate(champ: string, controle: string): boolean {
 
 export type MrzFormat = 'td1' | 'td3' | 'idfra';
 
+/**
+ * Nature du document, déduite du seul premier caractère du code document
+ * (ICAO 9303 : `P` passeport, `A`/`C`/`I` autre document de voyage officiel).
+ * Le second caractère est laissé à la discrétion de l'État émetteur et n'est
+ * donc jamais interprété : `codeDocument` l'expose brut.
+ */
+export type CategorieDocument = 'carte-identite' | 'passeport' | 'inconnu';
+
 export interface MrzChecksums {
   numeroDocument?: boolean;
   dateNaissance: boolean;
@@ -17,7 +25,11 @@ export interface MrzChecksums {
 
 export interface MrzResult {
   format: MrzFormat;
-  document: 'cni' | 'cni-2021' | 'passeport';
+  categorie: CategorieDocument;
+  /** Code document brut, chevrons retirés (`ID`, `P`, `IP`…). */
+  codeDocument: string;
+  /** État émetteur, code ICAO à trois lettres. Distinct de la nationalité. */
+  paysEmetteur: string;
   identite: Identite;
   checksums: MrzChecksums;
   /** `true` si tous les checksums présents sont valides. */
@@ -79,7 +91,7 @@ function parseTd3(l: [string, string] | string[]): MrzResult {
       checksums.dateExpiration as boolean,
     ),
   };
-  return resultat('td3', 'passeport', identite, checksums, l as string[]);
+  return resultat('td3', identite, checksums, l as string[]);
 }
 
 function parseTd1(l: string[]): MrzResult {
@@ -107,7 +119,7 @@ function parseTd1(l: string[]): MrzResult {
       checksums.dateExpiration as boolean,
     ),
   };
-  return resultat('td1', 'cni-2021', identite, checksums, l);
+  return resultat('td1', identite, checksums, l);
 }
 
 /**
@@ -140,18 +152,39 @@ function parseIdFra(l: string[]): MrzResult {
     nationalite: champMrz('FRA', checksums.composite),
     numeroDocument: champMrz(l2.slice(0, 12), checksums.numeroDocument as boolean),
   };
-  return resultat('idfra', 'cni', identite, checksums, l);
+  return resultat('idfra', identite, checksums, l);
 }
 
+/**
+ * Assemble le résultat. Les trois formats partagent le même en-tête de
+ * première ligne : code document (2) puis État émetteur (3).
+ */
 function resultat(
   format: MrzFormat,
-  document: MrzResult['document'],
   identite: Identite,
   checksums: MrzChecksums,
   brut: string[],
 ): MrzResult {
+  const entete = brut[0] as string;
+  const codeDocument = nettoyer(entete.slice(0, 2));
   const valide = Object.values(checksums).every((v) => v !== false);
-  return { format, document, identite, checksums, valide, brut };
+  return {
+    format,
+    categorie: categoriser(codeDocument),
+    codeDocument,
+    paysEmetteur: nettoyer(entete.slice(2, 5)),
+    identite,
+    checksums,
+    valide,
+    brut,
+  };
+}
+
+function categoriser(codeDocument: string): CategorieDocument {
+  const premier = codeDocument[0];
+  if (premier === 'P') return 'passeport';
+  if (premier === 'A' || premier === 'C' || premier === 'I') return 'carte-identite';
+  return 'inconnu';
 }
 
 function champMrz<T>(valeur: T, checksumValide: boolean): Champ<T> {

@@ -3,11 +3,11 @@ import type { OcrOptions } from './engines/ocr';
 import type { DatamatrixEngine, OcrEngine } from './engines/types';
 import type { ImageInput } from './image/preprocess';
 import type { Champ, Identite } from './models/index';
-import { type MrzResult, parseMrz } from './parsers/mrz';
+import { type CategorieDocument, type MrzResult, parseMrz } from './parsers/mrz';
 import { parseNir } from './parsers/nir';
 import { parse2ddoc } from './parsers/twoddoc';
 
-export type TypeDocument = 'cni' | 'cni-2021' | 'passeport' | 'carte-vitale' | 'unknown';
+export type TypeDocument = CategorieDocument | 'carte-vitale';
 
 export interface RawExtraction {
   payloadsDatamatrix?: string[];
@@ -18,6 +18,11 @@ export interface RawExtraction {
 
 export interface ExtractionResult {
   document: TypeDocument;
+  /**
+   * État émetteur, code ICAO à trois lettres, quand la source le porte.
+   * Distinct de la nationalité du titulaire (`data.nationalite`).
+   */
+  paysEmetteur?: string;
   data: Identite | null;
   /** 0 à 1, fondé sur les checksums et la nature de la source. */
   confidence: number;
@@ -43,10 +48,10 @@ export interface ExtractOptions {
 }
 
 /**
- * Extrait les données d'identité d'une photo de document français.
+ * Extrait les données d'identité d'une photo de document d'identité.
  * Pipeline : Datamatrix 2D-DOC (rapide, signé) → MRZ (checksums) → NIR.
  *
- * Un document illisible ne jette jamais : résultat `unknown` avec `raw`
+ * Un document illisible ne jette jamais : résultat `inconnu` avec `raw`
  * rempli pour diagnostic. Les moteurs lourds sont chargés paresseusement.
  */
 export async function extractDocument(
@@ -72,7 +77,7 @@ export async function extractDocument(
     if (!ocrInjecte) await ocr.liberer();
   }
 
-  return { document: 'unknown', data: null, confidence: 0, source: null, raw };
+  return { document: 'inconnu', data: null, confidence: 0, source: null, raw };
 }
 
 async function tenterDatamatrix(
@@ -99,7 +104,8 @@ async function tenterDatamatrix(
       if (!identite.nom && !identite.dateNaissance) continue;
       return {
         // Seul document d'identité porteur d'un 2D-DOC à ce jour : la CNI 2021.
-        document: 'cni-2021',
+        document: 'carte-identite',
+        paysEmetteur: 'FRA',
         data: identite,
         confidence: 0.9,
         source: '2ddoc',
@@ -133,7 +139,8 @@ async function tenterMrz(
       const controles = Object.values(mrz.checksums);
       const valides = controles.filter(Boolean).length;
       return {
-        document: mrz.document,
+        document: mrz.categorie,
+        paysEmetteur: mrz.paysEmetteur,
         data: mrz.identite,
         confidence: mrz.valide ? 0.95 : 0.7 * (valides / controles.length),
         source: 'mrz',
@@ -188,6 +195,7 @@ async function tenterNir(
     };
     return {
       document: 'carte-vitale',
+      paysEmetteur: 'FRA',
       data,
       confidence: fiable ? 0.85 : 0.5,
       source: 'nir',

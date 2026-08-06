@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.2.0 — à paraître
+
+Lecture des documents non français ([#1](https://github.com/lau-sam/identite-ts/issues/1)).
+Les formats TD1 et TD3 sont normalisés par l'ICAO 9303 : le parseur ne dépendait
+en fait d'aucune particularité française, mais il étiquetait tout document TD1
+comme une CNI 2021 et n'exposait jamais l'État émetteur.
+
+### Changements incompatibles
+
+- `MrzResult.document` disparaît au profit de `categorie`
+  (`'carte-identite' | 'passeport' | 'inconnu'`) : la génération du document
+  se lit désormais dans `format` (`'td1' | 'td3' | 'idfra'`) et l'État émetteur
+  dans `paysEmetteur`, sans information dupliquée.
+- `TypeDocument` suit la même refonte : `'cni'` et `'cni-2021'` deviennent
+  `'carte-identite'`, `'unknown'` devient `'inconnu'`.
+
+Migration : `resultat.document === 'cni-2021'` s'écrit désormais
+`resultat.document === 'carte-identite' && resultat.paysEmetteur === 'FRA'`.
+
+### Ajouts
+
+- `MrzResult.paysEmetteur` et `ExtractionResult.paysEmetteur` : État émetteur
+  (code ICAO à trois lettres), distinct de la nationalité du titulaire.
+- `MrzResult.codeDocument` : code document brut de la MRZ. Son second caractère
+  étant laissé à la discrétion de l'État émetteur, il n'est jamais interprété —
+  seul le premier caractère détermine `categorie`.
+
 ## 0.1.1 — 2026-07-17
 
 Aucun changement fonctionnel : première publication via la CI GitHub Actions

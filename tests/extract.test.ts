@@ -15,6 +15,13 @@ const TD3 = [
   'L898902C36UTO7408122F1204159ZE184226B<<<<<10',
 ];
 
+// MRZ TD1 fictive émise par un État autre que la France (checksums recalculés).
+const TD1_ETRANGER = [
+  'IDCHES1234567<2<<<<<<<<<<<<<<<',
+  '8501019M3001019CHE<<<<<<<<<<<8',
+  'MUSTER<<HANS<PETER<<<<<<<<<<<<',
+];
+
 function optionsAvec(engines: {
   datamatrix?: string[];
   ocrMrz?: string;
@@ -51,7 +58,7 @@ describe('extractDocument via 2D-DOC', () => {
       IMAGE_FACTICE,
       optionsAvec({ datamatrix: [CODE_2DDOC], traces }),
     );
-    expect(r.document).toBe('cni-2021');
+    expect(r.document).toBe('carte-identite');
     expect(r.source).toBe('2ddoc');
     expect(r.data?.nom?.valeur).toBe('MARTIN');
     expect(r.data?.dateNaissance?.valeur).toBe('1990-07-13');
@@ -85,6 +92,16 @@ describe('extractDocument via MRZ', () => {
     const r = await extractDocument(IMAGE_FACTICE, optionsAvec({ ocrMrz: texte }));
     expect(r.source).toBe('mrz');
     expect(r.data?.nom?.valeur).toBe('ERIKSSON');
+  });
+
+  it("remonte l'État émetteur d'une carte d'identité étrangère", async () => {
+    const r = await extractDocument(
+      IMAGE_FACTICE,
+      optionsAvec({ ocrMrz: TD1_ETRANGER.join('\n') }),
+    );
+    expect(r.document).toBe('carte-identite');
+    expect(r.paysEmetteur).toBe('CHE');
+    expect(r.data?.nom?.valeur).toBe('MUSTER');
   });
 
   it('réduit la confiance quand des checksums échouent', async () => {
@@ -161,7 +178,7 @@ describe('detecterMrz robustesse OCR', () => {
     ].join('\n');
     const r = await extractDocument(IMAGE_FACTICE, optionsAvec({ ocrMrz: texte }));
     expect(r.source).toBe('mrz');
-    expect(r.document).toBe('cni-2021');
+    expect(r.document).toBe('carte-identite');
     expect(r.data?.nom?.valeur).toBe('MARTIN');
     expect(r.confidence).toBeGreaterThanOrEqual(0.9);
   });
@@ -195,7 +212,7 @@ describe('extractDocument sans détection', () => {
       IMAGE_FACTICE,
       optionsAvec({ ocrMrz: 'rien ici', ocrTexte: 'toujours rien' }),
     );
-    expect(r.document).toBe('unknown');
+    expect(r.document).toBe('inconnu');
     expect(r.data).toBeNull();
     expect(r.source).toBeNull();
     expect(r.confidence).toBe(0);

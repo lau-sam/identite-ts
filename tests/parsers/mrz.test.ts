@@ -21,7 +21,8 @@ describe('parseMrz TD3 (passeport)', () => {
   it('extrait toutes les données du spécimen ICAO', () => {
     const r = parseMrz(TD3);
     expect(r.format).toBe('td3');
-    expect(r.document).toBe('passeport');
+    expect(r.categorie).toBe('passeport');
+    expect(r.paysEmetteur).toBe('UTO');
     expect(r.identite.nom?.valeur).toBe('ERIKSSON');
     expect(r.identite.prenoms?.valeur).toEqual(['ANNA', 'MARIA']);
     expect(r.identite.sexe?.valeur).toBe('F');
@@ -46,7 +47,7 @@ describe('parseMrz TD1 (nouvelle CNI 2021)', () => {
   it('extrait toutes les données du spécimen ANTS', () => {
     const r = parseMrz(TD1);
     expect(r.format).toBe('td1');
-    expect(r.document).toBe('cni-2021');
+    expect(r.categorie).toBe('carte-identite');
     expect(r.identite.nom?.valeur).toBe('MARTIN');
     expect(r.identite.prenoms?.valeur).toEqual(['MAELYS', 'GAELLE', 'MARIE']);
     expect(r.identite.sexe?.valeur).toBe('F');
@@ -62,7 +63,7 @@ describe('parseMrz IDFRA (ancienne CNI)', () => {
   it('extrait toutes les données du spécimen', () => {
     const r = parseMrz(IDFRA);
     expect(r.format).toBe('idfra');
-    expect(r.document).toBe('cni');
+    expect(r.categorie).toBe('carte-identite');
     expect(r.identite.nom?.valeur).toBe('LOISEAU');
     expect(r.identite.prenoms?.valeur).toEqual(['HERVE', 'DJAMEL']);
     expect(r.identite.sexe?.valeur).toBe('M');
@@ -71,6 +72,41 @@ describe('parseMrz IDFRA (ancienne CNI)', () => {
     expect(r.identite.numeroDocument?.valeur).toBe('970675K00277');
     expect(r.identite.dateExpiration).toBeUndefined();
     expect(r.valide).toBe(true);
+  });
+});
+
+// MRZ fictive au format TD1, construite pour ce test (checksums recalculés) :
+// aucune carte réelle, suisse ou autre, n'est reproduite ici.
+const TD1_CHE = [
+  'IDCHES1234567<2<<<<<<<<<<<<<<<',
+  '8501019M3001019CHE<<<<<<<<<<<8',
+  'MUSTER<<HANS<PETER<<<<<<<<<<<<',
+];
+
+describe('parseMrz émetteur et catégorie', () => {
+  it('lit le code document et le pays émetteur du TD1', () => {
+    const r = parseMrz(TD1);
+    expect(r.codeDocument).toBe('ID');
+    expect(r.paysEmetteur).toBe('FRA');
+    expect(r.categorie).toBe('carte-identite');
+  });
+
+  it("distingue l'État émetteur de la nationalité sur un TD1 non français", () => {
+    const r = parseMrz(TD1_CHE);
+    expect(r.paysEmetteur).toBe('CHE');
+    expect(r.categorie).toBe('carte-identite');
+    expect(r.identite.nom?.valeur).toBe('MUSTER');
+    expect(r.identite.prenoms?.valeur).toEqual(['HANS', 'PETER']);
+    expect(r.identite.nationalite?.valeur).toBe('CHE');
+    expect(r.identite.numeroDocument?.valeur).toBe('S1234567');
+    expect(r.valide).toBe(true);
+  });
+
+  it('classe un code document non normalisé en catégorie inconnue', () => {
+    const [l1, l2, l3] = TD1 as [string, string, string];
+    const r = parseMrz([`XX${l1.slice(2)}`, l2, l3]);
+    expect(r.codeDocument).toBe('XX');
+    expect(r.categorie).toBe('inconnu');
   });
 });
 

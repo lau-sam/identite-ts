@@ -53,7 +53,10 @@ for (const fichier of fichiers) {
     if (lignes) {
       console.log('• MRZ détectée :', lignes);
       const mrz = parseMrz(lignes);
-      console.log(`  ${mrz.document} — valide=${mrz.valide} :`, JSON.stringify(mrz.identite));
+      console.log(
+        `  ${mrz.categorie} ${mrz.paysEmetteur} — valide=${mrz.valide} :`,
+        JSON.stringify(mrz.identite),
+      );
     } else {
       console.log('• pas de MRZ');
     }

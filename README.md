@@ -54,15 +54,17 @@ import { extractDocument } from 'identite-ts';
 
 const resultat = await extractDocument(fichierPhoto); // File, Blob, HTMLImageElement ou ImageData
 
-if (resultat.document !== 'unknown') {
+if (resultat.document !== 'inconnu') {
   console.log(resultat.data?.nom?.valeur);           // 'MARTIN'
   console.log(resultat.data?.dateNaissance?.valeur); // '1990-07-13'
+  console.log(resultat.document);                    // 'carte-identite' | 'passeport' | 'carte-vitale'
+  console.log(resultat.paysEmetteur);                // 'FRA' — État émetteur, ≠ nationalité du titulaire
   console.log(resultat.confidence);                  // 0.95
   console.log(resultat.source);                      // 'mrz' | '2ddoc' | 'nir'
 }
 ```
 
-Pipeline de détection : **2D-DOC** (Datamatrix signé de la CNI 2021) → **MRZ** (CNI ancienne 2×36, CNI 2021 3×30, passeport 2×44) → **NIR** (carte Vitale). Un document illisible ne jette jamais : `document: 'unknown'` avec la zone `raw` remplie pour diagnostic.
+Pipeline de détection : **2D-DOC** (Datamatrix signé de la CNI 2021) → **MRZ** (2×36, 3×30, 2×44) → **NIR** (carte Vitale). Un document illisible ne jette jamais : `document: 'inconnu'` avec la zone `raw` remplie pour diagnostic.
 
 ### Parseurs purs (sans OCR, quelques Ko)
 
@@ -112,10 +114,28 @@ Votre formulaire peut ainsi pré-remplir en vert ce qui est validé par checksum
 
 | Document | Source | Données |
 |---|---|---|
-| CNI (ancienne) | MRZ 2×36 | nom, prénoms, sexe, date de naissance, n° de carte |
-| CNI 2021 | 2D-DOC ou MRZ 3×30 | + nationalité, date d'expiration |
-| Passeport | MRZ 2×44 | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
+| CNI française (ancienne) | MRZ 2×36 | nom, prénoms, sexe, date de naissance, n° de carte |
+| CNI française 2021 | 2D-DOC ou MRZ 3×30 | + nationalité, date d'expiration |
+| Carte d'identité étrangère | MRZ 3×30 (TD1) | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
+| Passeport | MRZ 2×44 (TD3) | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
 | Carte Vitale | NIR + OCR | sexe, année + mois de naissance, lieu de naissance (via INSEE) ; nom et prénoms lus en OCR (sans checksum) |
+
+### Documents non français
+
+Les formats **TD1** et **TD3** sont normalisés par l'[ICAO 9303](https://www.icao.int/publications/doc-series/doc-9303) : la lecture ne dépend d'aucune particularité nationale. Toute carte d'identité ou tout passeport conforme est donc lu, quel que soit l'État émetteur — carte d'identité suisse, allemande, italienne…
+
+`extractDocument` et `parseMrz` distinguent deux informations trop souvent confondues :
+
+```ts
+mrz.paysEmetteur            // 'CHE' — État qui a délivré le document
+mrz.identite.nationalite    // 'FRA' — nationalité du titulaire
+mrz.codeDocument            // 'ID'  — code brut de la MRZ
+mrz.categorie               // 'carte-identite' | 'passeport' | 'inconnu'
+```
+
+`categorie` ne se déduit que du **premier** caractère du code document (`P` passeport, `A`/`C`/`I` autre document officiel). Le second caractère n'a jamais été normalisé — l'ICAO ne l'uniformise qu'à partir de la 9ᵉ édition de la spécification — il est donc exposé brut dans `codeDocument` sans être interprété.
+
+En revanche, le **2D-DOC** (dispositif ANTS) et le **NIR** sont des formats strictement français : eux ne s'appliquent qu'aux documents français.
 
 ## Limites connues
 
@@ -127,6 +147,8 @@ Votre formulaire peut ainsi pré-remplir en vert ce qui est validé par checksum
 
 ## Feuille de route
 
+- [ ] **Localisation et rectification du document** : détecter le quadrilatère de la carte dans la photo, corriger la perspective, normaliser au format ID-1. Lève la contrainte de cadrage décrite dans les limites ci-dessus.
+- [ ] **Détection de fraude** : repérer un document rejoué (photo d'écran, photocopie, capture), altéré ou incohérent — à commencer par les indices vérifiables sans référentiel (cohérence MRZ ↔ zone visuelle, checksums, dates impossibles).
 - [ ] Vérification cryptographique de la signature 2D-DOC (ECDSA, certificats ANTS — [spécifications officielles](https://ants.gouv.fr/nos-missions/les-solutions-numeriques/2d-doc))
 - [ ] Lecture de la puce NFC (port de [cnie-python-tools](https://github.com/hufon/cnie-python-tools), WebNFC)
 - [ ] OCR des zones visuelles complémentaires (lieu de naissance CNI/passeport)
