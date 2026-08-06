@@ -145,6 +145,20 @@ En revanche, le **2D-DOC** (dispositif ANTS) et le **NIR** sont des formats stri
 - Le référentiel INSEE embarqué couvre le millésime courant : une commune fusionnée référencée par un vieux NIR peut ne pas être résolue.
 - Par défaut, tesseract.js et zxing-wasm téléchargent leurs assets (WASM, modèles de langue) depuis un CDN public au premier usage. Les données de l'utilisateur ne quittent jamais le navigateur, mais pour un déploiement air-gapped ou strictement auto-hébergé, servez ces assets vous-même via les options `ocr.langPath`/`ocr.workerPath`/`ocr.corePath` et `datamatrix.wasmBaseUrl`.
 
+## Jeux de données publics
+
+Les spécimens listés plus haut servent à essayer la bibliothèque à la main. Pour la **mesurer** — taux de lecture MRZ, précision de localisation, régressions — il faut des jeux annotés. Ceux-ci sont publics, et leur licence a été relue sur la source primaire (`license.txt` du dépôt officiel ou fiche Zenodo) :
+
+| Jeu | Ce qu'il apporte ici | Licence |
+|---|---|---|
+| [DocXPand-25k](https://github.com/QuickSign/docxpand) ([arXiv:2407.20662](https://arxiv.org/abs/2407.20662)) | 24 994 images de documents fictifs incrustés sur fonds réels, MRZ TD1/TD2/TD3 et champs annotés — localisation, OCR, MRZ | CC BY-NC-SA 4.0 (**non commercial**) |
+| MIDV-500 et MIDV-2020 (`ftp://smartengines.com/midv-500/`) | Documents filmés en conditions dégradées : reflets, flou, cadrage partiel — la matière du chantier localisation/rectification | CC BY-SA 2.5 |
+| [MIDV-Holo](https://github.com/SmartEngines/midv-holo) | Originaux et attaques par présentation, hologrammes annotés — détection de fraude | CC BY-SA 2.5 |
+| [DLC-2021](https://zenodo.org/records/6466770) | Recaptures d'écran, photocopies, documents sans lamination — document rejoué | CC BY-SA 2.5 |
+| [SmartDoc 2015](https://zenodo.org/records/1230218) | Documents A4 filmés au smartphone : pas des pièces d'identité, mais la référence pour la localisation en vidéo | CC BY 4.0 |
+
+**Aucun de ces jeux n'est redistribué ici, et aucun n'entrera dans ce dépôt ni dans le paquet npm.** Le projet est sous licence MIT, qui autorise l'usage commercial : y commiter des images sous CC BY-NC-SA ou CC BY-SA reviendrait à leur accorder des droits que leurs auteurs n'ont pas donnés. Les utiliser localement pour évaluer est en revanche sans difficulté. Deux pièges à connaître : le partage à l'identique se propage à tout jeu dérivé ou augmenté que l'on publierait, et la licence affichée sur une page arXiv couvre l'article, jamais les données.
+
 ## Feuille de route
 
 - [ ] **Localisation et rectification du document** : détecter le quadrilatère de la carte dans la photo, corriger la perspective, normaliser au format ID-1. Lève la contrainte de cadrage décrite dans les limites ci-dessus.
