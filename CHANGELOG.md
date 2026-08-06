@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — à paraître
+## 0.2.0 — 2026-08-06
 
 Lecture des documents non français ([#1](https://github.com/lau-sam/identite-ts/issues/1)).
 Les formats TD1 et TD3 sont normalisés par l'ICAO 9303 : le parseur ne dépendait
