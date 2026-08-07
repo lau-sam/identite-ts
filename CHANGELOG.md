@@ -1,6 +1,42 @@
 # Changelog
 
-## 0.3.0 — à paraître
+## 0.4.0 — à paraître
+
+Lecture des codes 2D non interprétés ([#3](https://github.com/lau-sam/identite-ts/issues/3)).
+Les QR étaient déjà décodés, mais rien ne distinguait leur format de celui d'un
+Datamatrix, et leur contenu ne pouvait pas être signalé sans divulguer les
+données du document lu.
+
+### Changements incompatibles
+
+- `RawExtraction.payloadsDatamatrix` (`string[]`) devient `codesBarres`
+  (`CodeBarre[]`), chaque entrée portant son `format` et son `texte`.
+- `DatamatrixEngine.decoder` renvoie ces mêmes `CodeBarre[]` au lieu de
+  `string[]` — sans effet, sauf pour un moteur injecté par l'appelant.
+
+### Documentation
+
+- Le README passe en **anglais** ; la version française devient `README.fr.md`, avec un
+  sélecteur de langue dans les deux. La bibliothèque lit des formats internationaux
+  (ICAO 9303) : un README uniquement francophone en masquait la portée.
+- Nouvelle section « pays et formats couverts », qui sépare trois choses jusque-là
+  confondues : les formats internationaux (tout État émetteur), les formats propres
+  à la France (2D-DOC, NIR, IDFRA) et la liste des documents réellement **vérifiés
+  par un test** (FRA, CHE, DEU, spécimens ICAO).
+- Formulaire d'issue `country-format.yml` pour signaler un format mal lu dans un pays
+  donné, avec interdiction explicite de joindre les données d'un document réel.
+- La description npm passe en anglais et les mots-clés couvrent les formats ICAO.
+
+### Ajouts
+
+- `decrireCodeBarre` : résume un code 2D en métadonnées non identifiantes
+  (format, longueur, famille de caractères, préfixe, séparateurs de contrôle),
+  destinées à être jointes à un rapport de bug sur un format non documenté.
+- Le playground affiche cette description pour tout code qu'il ne sait pas
+  interpréter, en rappelant que le résultat complet contient les données du
+  porteur et n'a pas à être publié.
+
+## 0.3.0 — 2026-08-07
 
 Lecture des titres de séjour ([#2](https://github.com/lau-sam/identite-ts/issues/2)) et
 correction de deux lectures silencieusement fausses.

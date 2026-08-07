@@ -1,4 +1,4 @@
-import type { DatamatrixEngine } from './types';
+import type { CodeBarre, DatamatrixEngine } from './types';
 
 export interface DatamatrixOptions {
   /**
@@ -15,7 +15,7 @@ export interface DatamatrixOptions {
  */
 export function creerDatamatrixEngine(options: DatamatrixOptions = {}): DatamatrixEngine {
   return {
-    async decoder(image: ImageData): Promise<string[]> {
+    async decoder(image: ImageData): Promise<CodeBarre[]> {
       const zxing = await import('zxing-wasm/reader');
       if (options.wasmBaseUrl) {
         const base = options.wasmBaseUrl.replace(/\/$/, '');
@@ -28,7 +28,7 @@ export function creerDatamatrixEngine(options: DatamatrixOptions = {}): Datamatr
         tryHarder: true,
         textMode: 'Plain',
       });
-      return resultats.filter((r) => r.isValid).map((r) => r.text);
+      return resultats.filter((r) => r.isValid).map((r) => ({ format: r.format, texte: r.text }));
     },
   };
 }

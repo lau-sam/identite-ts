@@ -41,6 +41,27 @@
         font-size: 0.85rem;
         overflow-x: auto;
       }
+      #diagnostic {
+        display: none;
+        margin: 1rem 0;
+        padding: 1rem;
+        border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+        border-radius: 8px;
+      }
+      #diagnostic h2 {
+        margin: 0 0 0.5rem;
+        font-size: 0.95rem;
+      }
+      #diagnostic p {
+        margin: 0 0 0.5rem;
+        font-size: 0.8rem;
+      }
+      #diagnostic pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font-family: ui-monospace, monospace;
+        font-size: 0.8rem;
+      }
       img#apercu {
         max-width: 100%;
         max-height: 240px;
@@ -82,6 +103,15 @@
     </p>
     <img id="apercu" alt="Aperçu du document" />
     <p id="statut"></p>
+    <section id="diagnostic">
+      <h2>Code 2D non interprété — diagnostic partageable</h2>
+      <p>
+        Un code-barres a été lu sans être compris. Ce résumé ne contient aucune donnée du porteur :
+        vous pouvez le copier tel quel dans une issue. Le bloc de résultat ci-dessous, lui, contient
+        le contenu réel du code — ne le publiez pas.
+      </p>
+      <pre id="diagnostic-contenu"></pre>
+    </section>
     <pre id="resultat"></pre>
     <script type="module" src="/src/main.ts"></script>
   </body>

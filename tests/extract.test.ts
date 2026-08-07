@@ -24,6 +24,7 @@ const TD1_ETRANGER = [
 
 function optionsAvec(engines: {
   datamatrix?: string[];
+  qr?: string[];
   ocrMrz?: string;
   ocrTexte?: string;
   traces?: string[];
@@ -35,7 +36,10 @@ function optionsAvec(engines: {
       datamatrix: {
         async decoder() {
           traces.push('datamatrix');
-          return engines.datamatrix ?? [];
+          return [
+            ...(engines.datamatrix ?? []).map((texte) => ({ format: 'DataMatrix', texte })),
+            ...(engines.qr ?? []).map((texte) => ({ format: 'QRCode', texte })),
+          ];
         },
       },
       ocr: {
@@ -64,7 +68,18 @@ describe('extractDocument via 2D-DOC', () => {
     expect(r.data?.dateNaissance?.valeur).toBe('1990-07-13');
     expect(r.confidence).toBeGreaterThanOrEqual(0.9);
     expect(traces).not.toContain('ocr:mrz');
-    expect(r.raw.payloadsDatamatrix).toEqual([CODE_2DDOC]);
+    expect(r.raw.codesBarres).toEqual([{ format: 'DataMatrix', texte: CODE_2DDOC }]);
+  });
+
+  it("expose un QR non 2D-DOC sans l'interpréter", async () => {
+    // Permis de conduire suisse : QR au format non documenté publiquement.
+    const r = await extractDocument(
+      IMAGE_FACTICE,
+      optionsAvec({ qr: ['CH01|charge utile inconnue'] }),
+    );
+    expect(r.raw.codesBarres).toEqual([{ format: 'QRCode', texte: 'CH01|charge utile inconnue' }]);
+    expect(r.document).toBe('inconnu');
+    expect(r.data).toBeNull();
   });
 
   it('ignore un payload non 2D-DOC et retombe sur l’OCR', async () => {

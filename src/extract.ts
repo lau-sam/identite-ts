@@ -1,6 +1,6 @@
 import type { DatamatrixOptions } from './engines/datamatrix';
 import type { OcrOptions } from './engines/ocr';
-import type { DatamatrixEngine, OcrEngine } from './engines/types';
+import type { CodeBarre, DatamatrixEngine, OcrEngine } from './engines/types';
 import type { ImageInput } from './image/preprocess';
 import type { Champ, Identite } from './models/index';
 import { type CategorieDocument, type MrzResult, parseMrz } from './parsers/mrz';
@@ -10,7 +10,8 @@ import { parse2ddoc } from './parsers/twoddoc';
 export type TypeDocument = CategorieDocument | 'carte-vitale';
 
 export interface RawExtraction {
-  payloadsDatamatrix?: string[];
+  /** Symboles 2D lus sur l'image. Seul le 2D-DOC y est interprété. */
+  codesBarres?: CodeBarre[];
   lignesMrz?: string[];
   texteOcr?: string;
   nir?: string;
@@ -88,18 +89,18 @@ async function tenterDatamatrix(
   const engine =
     options.engines?.datamatrix ??
     (await import('./engines/datamatrix')).creerDatamatrixEngine(options.datamatrix);
-  let payloads: string[];
+  let codes: CodeBarre[];
   try {
-    payloads = await engine.decoder(image);
+    codes = await engine.decoder(image);
   } catch {
     return undefined; // moteur indisponible : on continue avec l'OCR
   }
-  if (payloads.length) raw.payloadsDatamatrix = payloads;
+  if (codes.length) raw.codesBarres = codes;
 
-  for (const payload of payloads) {
-    if (!payload.startsWith('DC')) continue;
+  for (const { texte } of codes) {
+    if (!texte.startsWith('DC')) continue;
     try {
-      const doc = parse2ddoc(payload);
+      const doc = parse2ddoc(texte);
       const identite = doc.identite;
       if (!identite.nom && !identite.dateNaissance) continue;
       return {

@@ -1,8 +1,10 @@
+export type { AlphabetCodeBarre, DescriptionCodeBarre } from './diagnostic';
+export { decrireCodeBarre } from './diagnostic';
 export type { DatamatrixOptions } from './engines/datamatrix';
 export { creerDatamatrixEngine } from './engines/datamatrix';
 export type { OcrOptions } from './engines/ocr';
 export { creerOcrEngine } from './engines/ocr';
-export type { DatamatrixEngine, ModeOcr, OcrEngine } from './engines/types';
+export type { CodeBarre, DatamatrixEngine, ModeOcr, OcrEngine } from './engines/types';
 export type { ExtractionResult, ExtractOptions, RawExtraction, TypeDocument } from './extract';
 export { detecterMrz, detecterNir, extractDocument } from './extract';
 export type { ImageDataLike, ImageInput } from './image/preprocess';
