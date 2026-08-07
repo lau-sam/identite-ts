@@ -1,6 +1,6 @@
 {
   "name": "identite-ts",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Extraction côté client de données structurées depuis les documents d'identité français (CNI, passeport, carte Vitale) : MRZ, NIR, 2D-DOC.",
   "keywords": [
     "cni",
