@@ -66,6 +66,8 @@ if (resultat.document !== 'inconnu') {
 
 Pipeline de détection : **2D-DOC** (Datamatrix signé de la CNI 2021) → **MRZ** (2×36, 3×30, 2×44) → **NIR** (carte Vitale). Un document illisible ne jette jamais : `document: 'inconnu'` avec la zone `raw` remplie pour diagnostic.
 
+La forme 2×36 est ambiguë : elle est partagée par le TD2 de l'ICAO et par l'ancienne CNI française, dont les dispositions sont incompatibles. Les deux lectures sont tentées et celle dont les checksums tombent juste l'emporte.
+
 ### Parseurs purs (sans OCR, quelques Ko)
 
 Utilisables aussi côté serveur (Node ≥ 20) :
@@ -114,15 +116,18 @@ Votre formulaire peut ainsi pré-remplir en vert ce qui est validé par checksum
 
 | Document | Source | Données |
 |---|---|---|
-| CNI française (ancienne) | MRZ 2×36 | nom, prénoms, sexe, date de naissance, n° de carte |
+| CNI française (ancienne) | MRZ 2×36 (IDFRA) | nom, prénoms, sexe, date de naissance, n° de carte |
 | CNI française 2021 | 2D-DOC ou MRZ 3×30 | + nationalité, date d'expiration |
 | Carte d'identité étrangère | MRZ 3×30 (TD1) | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
+| Titre de séjour, carte officielle | MRZ 2×36 (TD2) | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
 | Passeport | MRZ 2×44 (TD3) | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
 | Carte Vitale | NIR + OCR | sexe, année + mois de naissance, lieu de naissance (via INSEE) ; nom et prénoms lus en OCR (sans checksum) |
 
 ### Documents non français
 
-Les formats **TD1** et **TD3** sont normalisés par l'[ICAO 9303](https://www.icao.int/publications/doc-series/doc-9303) : la lecture ne dépend d'aucune particularité nationale. Toute carte d'identité ou tout passeport conforme est donc lu, quel que soit l'État émetteur — carte d'identité suisse, allemande, italienne…
+Les formats **TD1**, **TD2** et **TD3** sont normalisés par l'[ICAO 9303](https://www.icao.int/publications/doc-series/doc-9303) : la lecture ne dépend d'aucune particularité nationale. Toute carte d'identité, tout titre de séjour et tout passeport conforme est donc lu, quel que soit l'État émetteur — documents suisses, allemands, italiens…
+
+Le TD2 couvre notamment les **titres de séjour européens** : le [règlement (CE) 1030/2002](https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX%3A32002R1030) impose une zone de lecture conforme aux normes de l'OACI, sans fixer le format — TD1 et TD2 sont l'un comme l'autre valides, et tous deux sont lus.
 
 `extractDocument` et `parseMrz` distinguent deux informations trop souvent confondues :
 

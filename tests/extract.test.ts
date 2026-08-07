@@ -183,11 +183,50 @@ describe('detecterMrz robustesse OCR', () => {
     expect(r.confidence).toBeGreaterThanOrEqual(0.9);
   });
 
+  it('tolère un parasite en tête de la ligne du nom', async () => {
+    // Aucun checksum ne couvre cette ligne : sans garde, la fenêtre décalée
+    // passe pour valide et le nom sort amputé de sa première lettre.
+    const texte = `7${TD3[0]}\n${TD3[1]}`;
+    const r = await extractDocument(IMAGE_FACTICE, optionsAvec({ ocrMrz: texte }));
+    expect(r.raw.lignesMrz).toEqual(TD3);
+    expect(r.data?.nom?.valeur).toBe('ERIKSSON');
+    expect(r.paysEmetteur).toBe('UTO');
+  });
+
+  it("tolère un parasite en tête quand l'État émetteur tient en une lettre", async () => {
+    // Spécimen allemand (Erika Mustermann) : le code pays « D » est complété
+    // par des chevrons — un en-tête parfaitement légal qui n'a rien d'anormal.
+    const lignes = [
+      'P<D<<MUSTERMANN<<ERIKA<<<<<<<<<<<<<<<<<<<<<<',
+      'C01X00T478D<<6408125F2702283<<<<<<<<<<<<<<<4',
+    ];
+    const r = await extractDocument(
+      IMAGE_FACTICE,
+      optionsAvec({ ocrMrz: `9${lignes[0]}\n${lignes[1]}` }),
+    );
+    expect(r.raw.lignesMrz).toEqual(lignes);
+    expect(r.data?.nom?.valeur).toBe('MUSTERMANN');
+    expect(r.paysEmetteur).toBe('D');
+  });
+
   it('tolère un parasite en fin de ligne', async () => {
     const texte = `${TD3[0]}4\n${TD3[1]}`;
     const r = await extractDocument(IMAGE_FACTICE, optionsAvec({ ocrMrz: texte }));
     expect(r.source).toBe('mrz');
     expect(r.data?.nom?.valeur).toBe('ERIKSSON');
+  });
+});
+
+describe('detecterMrz sur une MRZ TD2', () => {
+  it('retrouve les lignes exactes malgré des parasites en tête', async () => {
+    // Spécimen ICAO 9303 partie 6, précédé du décor lu comme un caractère
+    const lignes = ['I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<', 'D231458907UTO7408122F1204159<<<<<<<6'];
+    const texte = `5${lignes[0]}\n3${lignes[1]}`;
+    const r = await extractDocument(IMAGE_FACTICE, optionsAvec({ ocrMrz: texte }));
+    expect(r.source).toBe('mrz');
+    expect(r.raw.lignesMrz).toEqual(lignes);
+    expect(r.data?.nom?.valeur).toBe('ERIKSSON');
+    expect(r.paysEmetteur).toBe('UTO');
   });
 });
 

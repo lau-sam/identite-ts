@@ -6,7 +6,7 @@ function checksumDate(champ: string, controle: string): boolean {
   return /^\d{6}$/.test(champ) && checksumIcaoValide(champ, controle);
 }
 
-export type MrzFormat = 'td1' | 'td3' | 'idfra';
+export type MrzFormat = 'td1' | 'td2' | 'td3' | 'idfra';
 
 /**
  * Nature du document, déduite du seul premier caractère du code document
@@ -59,7 +59,7 @@ export function parseMrz(lines: string[]): MrzResult {
   const l = lines.map((ligne) => ligne.trim().toUpperCase());
   if (l.length === 3 && l.every((x) => x.length === 30)) return parseTd1(l);
   if (l.length === 2 && l.every((x) => x.length === 44)) return parseTd3(l);
-  if (l.length === 2 && l.every((x) => x.length === 36)) return parseIdFra(l);
+  if (l.length === 2 && l.every((x) => x.length === 36)) return parse2x36(l);
   throw new MrzParseError(
     `Forme MRZ inconnue : ${l.length} ligne(s) de longueur [${l.map((x) => x.length).join(', ')}]`,
   );
@@ -120,6 +120,77 @@ function parseTd1(l: string[]): MrzResult {
     ),
   };
   return resultat('td1', identite, checksums, l);
+}
+
+/**
+ * Deux dispositions incompatibles partagent la forme 2×36 : le TD2 de l'ICAO
+ * et l'ancienne carte d'identité française. Le préfixe ne les départage pas —
+ * « ID » est un code document TD2 parfaitement légal — donc on lit dans les
+ * deux et on retient celle dont le plus de checksums tombent juste. À égalité,
+ * l'ordre d'essai tranche : « IDFRA » désigne la CNI, sinon le standard.
+ */
+function parse2x36(l: string[]): MrzResult {
+  const ordre = (l[0] as string).startsWith('IDFRA')
+    ? [parseIdFra, parseTd2]
+    : [parseTd2, parseIdFra];
+  const candidats = ordre.map((parseur) => essayer(parseur, l)).filter((r) => r !== undefined);
+  const meilleur = candidats.reduce<MrzResult | undefined>(
+    (retenu, candidat) =>
+      retenu && checksumsValides(retenu) >= checksumsValides(candidat) ? retenu : candidat,
+    undefined,
+  );
+  if (!meilleur) {
+    throw new MrzParseError('Forme 2×36 lisible ni en TD2 ni en IDFRA');
+  }
+  return meilleur;
+}
+
+function essayer(parseur: (l: string[]) => MrzResult, l: string[]): MrzResult | undefined {
+  try {
+    return parseur(l);
+  } catch {
+    return undefined;
+  }
+}
+
+function checksumsValides(resultat: MrzResult): number {
+  return Object.values(resultat.checksums).filter(Boolean).length;
+}
+
+/**
+ * TD2 ICAO (2 lignes de 36) : titres de séjour, cartes officielles de voyage.
+ * Ligne 1 : code document (2) + État émetteur (3) + nom (31).
+ * Ligne 2 : n° document (9) + contrôle + nationalité (3) + naissance (6)
+ *           + contrôle + sexe + expiration (6) + contrôle + optionnel (7)
+ *           + contrôle composite.
+ */
+function parseTd2(l: string[]): MrzResult {
+  const [l1, l2] = l as [string, string];
+  const checksums: MrzChecksums = {
+    numeroDocument: checksumIcaoValide(l2.slice(0, 9), l2[9] as string),
+    dateNaissance: checksumDate(l2.slice(13, 19), l2[19] as string),
+    dateExpiration: checksumDate(l2.slice(21, 27), l2[27] as string),
+    // Le composite exclut la nationalité (11-13) et le sexe (21) — ICAO 9303-6 §4.2.4.
+    composite: checksumIcaoValide(
+      l2.slice(0, 10) + l2.slice(13, 20) + l2.slice(21, 35),
+      l2[35] as string,
+    ),
+  };
+  const { nom, prenoms } = parseNoms(l1.slice(5), '<<', '<');
+  const identite: Identite = {
+    ...(nom ? { nom: champMrz(nom, checksums.composite) } : {}),
+    ...(prenoms.length ? { prenoms: champMrz(prenoms, checksums.composite) } : {}),
+    ...champSexe(l2[20] as string),
+    ...champDate('dateNaissance', dateMrz(l2.slice(13, 19), 'naissance'), checksums.dateNaissance),
+    nationalite: champMrz(nettoyer(l2.slice(10, 13)), checksums.composite),
+    numeroDocument: champMrz(nettoyer(l2.slice(0, 9)), checksums.numeroDocument as boolean),
+    ...champDate(
+      'dateExpiration',
+      dateMrz(l2.slice(21, 27), 'expiration'),
+      checksums.dateExpiration as boolean,
+    ),
+  };
+  return resultat('td2', identite, checksums, l);
 }
 
 /**

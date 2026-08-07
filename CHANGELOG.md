@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.3.0 — à paraître
+
+Lecture des titres de séjour ([#2](https://github.com/lau-sam/identite-ts/issues/2)) et
+correction de deux lectures silencieusement fausses.
+
+### Corrections
+
+- **Une MRZ TD2 était lue avec la disposition de l'ancienne CNI française.** Les
+  deux formats partagent la forme 2×36, et tout document de cette taille était
+  confié au parseur français : nom et prénoms fusionnés, date lue comme prénom,
+  et nationalité `FRA` affirmée sur un document étranger. Les deux dispositions
+  sont désormais essayées, celle dont les checksums tombent juste l'emporte.
+- **Une fenêtre OCR décalée d'un caractère sur la ligne du nom pouvait être
+  déclarée valide.** En TD2 comme en TD3, aucun checksum ne couvre cette ligne :
+  un parasite lu en tête décalait le nom (`OERIKSSON` pour `ERIKSSON`) et
+  l'État émetteur (`UT` pour `UTO`) sans que `valide` passe à `false`. Le
+  fenêtrage vérifie maintenant que l'en-tête a la forme d'un code document
+  suivi d'un État émetteur.
+
+### Ajouts
+
+- `parseMrz` lit le format **TD2** (2×36, ICAO 9303 partie 6) : titres de
+  séjour et cartes officielles de voyage. Le règlement (CE) 1030/2002 laisse
+  les États choisir entre TD1 et TD2 pour les titres de séjour européens ;
+  les deux sont désormais couverts.
+- `MrzFormat` accueille la valeur `'td2'` — sans incidence, sauf pour un
+  appelant qui énumérerait exhaustivement les formats.
+
 ## 0.2.0 — 2026-08-06
 
 Lecture des documents non français ([#1](https://github.com/lau-sam/identite-ts/issues/1)).

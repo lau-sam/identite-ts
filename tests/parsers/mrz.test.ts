@@ -14,6 +14,9 @@ const TD1 = [
   'MARTIN<<MAELYS<GAELLE<MARIE<<<',
 ];
 
+// Spécimen officiel ICAO 9303 partie 6, appendice B (Utopia)
+const TD2 = ['I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<', 'D231458907UTO7408122F1204159<<<<<<<6'];
+
 // Spécimen d'ancienne CNI (format IDFRA 2×36)
 const IDFRA = ['IDFRALOISEAU<<<<<<<<<<<<<<<<<<<<<<<<', '970675K002774HERVE<<DJAMEL<7303216M4'];
 
@@ -58,6 +61,28 @@ describe('parseMrz TD1 (nouvelle CNI 2021)', () => {
     expect(r.valide).toBe(true);
   });
 });
+
+describe('parseMrz TD2 (titre de séjour, carte officielle)', () => {
+  it('extrait toutes les données du spécimen ICAO', () => {
+    const r = parseMrz(TD2);
+    expect(r.format).toBe('td2');
+    expect(r.categorie).toBe('carte-identite');
+    expect(r.paysEmetteur).toBe('UTO');
+    expect(r.identite.nom?.valeur).toBe('ERIKSSON');
+    expect(r.identite.prenoms?.valeur).toEqual(['ANNA', 'MARIA']);
+    expect(r.identite.sexe?.valeur).toBe('F');
+    expect(r.identite.dateNaissance?.valeur).toBe('1974-08-12');
+    expect(r.identite.nationalite?.valeur).toBe('UTO');
+    expect(r.identite.numeroDocument?.valeur).toBe('D23145890');
+    expect(r.identite.dateExpiration?.valeur).toBe('2012-04-15');
+    expect(r.valide).toBe(true);
+  });
+});
+
+// MRZ TD2 fictive (checksums recalculés) dont le code document commence par
+// « ID », comme l'ancienne CNI française : les deux formats partagent la forme
+// 2×36, seuls les checksums peuvent les départager.
+const TD2_AMBIGU = ['IDCHEMUSTER<<HANS<PETER<<<<<<<<<<<<<', 'S1234567<2CHE8501019M3001019<<<<<<<8'];
 
 describe('parseMrz IDFRA (ancienne CNI)', () => {
   it('extrait toutes les données du spécimen', () => {
@@ -107,6 +132,31 @@ describe('parseMrz émetteur et catégorie', () => {
     const r = parseMrz([`XX${l1.slice(2)}`, l2, l3]);
     expect(r.codeDocument).toBe('XX');
     expect(r.categorie).toBe('inconnu');
+  });
+});
+
+describe('parseMrz arbitrage de la forme 2×36', () => {
+  it('ne prend pas un TD2 commençant par « ID » pour une ancienne CNI', () => {
+    const r = parseMrz(TD2_AMBIGU);
+    expect(r.format).toBe('td2');
+    expect(r.paysEmetteur).toBe('CHE');
+    expect(r.identite.nom?.valeur).toBe('MUSTER');
+    expect(r.identite.prenoms?.valeur).toEqual(['HANS', 'PETER']);
+    // La nationalité était auparavant codée en dur à FRA par le parseur IDFRA.
+    expect(r.identite.nationalite?.valeur).toBe('CHE');
+    expect(r.valide).toBe(true);
+  });
+
+  it('conserve la lecture IDFRA pour une ancienne CNI', () => {
+    expect(parseMrz(IDFRA).format).toBe('idfra');
+  });
+
+  it("n'annonce aucune validité sur une forme 2×36 illisible", () => {
+    // Conformément au reste du parseur, une MRZ absurde ne jette pas : elle
+    // ressort avec tous ses checksums en échec.
+    const r = parseMrz(['1'.repeat(36), '2'.repeat(36)]);
+    expect(r.valide).toBe(false);
+    expect(Object.values(r.checksums).some(Boolean)).toBe(false);
   });
 });
 

@@ -279,9 +279,13 @@ function meilleureCombinaison(candidates: string[], longueur: number): string[] 
       // La zone nom n'a pas de checksum : les chiffres y sont forcément des
       // parasites OCR. Une fenêtre sans date de naissance ou sans sexe est
       // presque toujours décalée : pénalités pour départager.
+      // L'en-tête, lui non plus, n'est couvert par aucun checksum en TD2 et
+      // TD3 : sans cette pénalité, une fenêtre décalée d'un caractère sur la
+      // ligne du nom passe pour parfaitement valide.
       const score =
         valides * 1000 -
         (mrz.identite.dateNaissance ? 0 : 400) -
+        (enteteConforme(combo) ? 0 : 300) -
         (mrz.identite.sexe ? 0 : 150) -
         chiffresZoneNom(mrz.format, combo);
       if (!meilleur || score > meilleur.score) meilleur = { lignes: combo, score };
@@ -292,11 +296,21 @@ function meilleureCombinaison(candidates: string[], longueur: number): string[] 
   return meilleur && meilleur.score >= 1000 ? meilleur.lignes : undefined;
 }
 
+/**
+ * Toute MRZ s'ouvre sur un code document (une lettre, éventuellement suivie
+ * d'une seconde ou d'un chevron) puis sur l'État émetteur. Ce dernier commence
+ * toujours par une lettre, mais peut être plus court que trois caractères et
+ * complété par des chevrons — l'Allemagne s'écrit `D<<`.
+ */
+function enteteConforme(lignes: string[]): boolean {
+  return /^[A-Z][A-Z<][A-Z][A-Z<]{2}/.test(lignes[0] as string);
+}
+
 function chiffresZoneNom(format: MrzResult['format'], lignes: string[]): number {
   const zone =
     format === 'td1'
       ? (lignes[2] as string)
-      : format === 'td3'
+      : format === 'td3' || format === 'td2'
         ? (lignes[0] as string).slice(5)
         : (lignes[0] as string).slice(5, 30);
   return (zone.match(/\d/g) ?? []).length;
