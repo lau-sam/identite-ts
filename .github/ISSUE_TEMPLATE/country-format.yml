@@ -1,0 +1,107 @@
+name: Country format — misread or unsupported
+description: Report an identity document format from your country that is misread, or not read at all.
+title: '[format] <country> — <document>'
+labels: ['enhancement', 'help wanted']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping cover more countries. Reading is standards-based, so most conforming
+        documents are read without country-specific code — but nothing is *verified* until
+        someone from that country reports it.
+
+        > [!CAUTION]
+        > **Never attach the photo or the data of a real identity document.** This issue is
+        > public, indexed by search engines, and its edit history stays readable after deletion.
+        > Use a public official specimen, a fictitious MRZ with recomputed checksums, or the
+        > output of `decrireCodeBarre` — which is designed to disclose nothing.
+
+  - type: input
+    id: country
+    attributes:
+      label: Country / issuing state
+      description: Name, and the ICAO three-letter code if you know it.
+      placeholder: Switzerland (CHE)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: document
+    attributes:
+      label: Document type
+      options:
+        - Identity card
+        - Passport
+        - Residence permit
+        - Driving licence
+        - Health or social security card
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: Suspected format
+      description: If unsure, pick "I don't know" — determining it is part of the work.
+      options:
+        - MRZ TD1 (3 lines × 30)
+        - MRZ TD2 (2 lines × 36)
+        - MRZ TD3 (2 lines × 44)
+        - National MRZ layout (non-ICAO)
+        - 2D barcode (QR or Datamatrix)
+        - "I don't know"
+    validations:
+      required: true
+
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: What happens, and what you expected
+      description: Which fields are wrong or missing? Was `valide` true when it should not be?
+      placeholder: |
+        Expected: nom = 'MUSTER', paysEmetteur = 'CHE'
+        Actual:   nom = 'MUSTERID', valide = true
+    validations:
+      required: true
+
+  - type: input
+    id: specimen
+    attributes:
+      label: Link to a public specimen
+      description: >
+        A fictitious document published by an authority, Wikimedia Commons, or an official
+        specification. This is what makes the report actionable — without it, the format can
+        rarely be fixed.
+      placeholder: https://commons.wikimedia.org/wiki/File:...
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Output of `decrireCodeBarre` (2D codes only)
+      description: >
+        For an unrecognised QR or Datamatrix. This helper returns a shape summary with no name,
+        date or number. Only `prefixe` is a literal excerpt — read it before posting.
+      render: json
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: identite-ts version
+      placeholder: 0.3.0
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: no-real-data
+    attributes:
+      label: Confirmation
+      options:
+        - label: >
+            This issue contains no photo and no data from a real identity document — only public
+            specimens or fictitious data.
+          required: true

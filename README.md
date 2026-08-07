@@ -1,43 +1,64 @@
 <div align="center">
 
-# identite-ts 🇫🇷
+# identite-ts
 
-**Une photo de CNI, passeport ou carte Vitale → un JSON typé. 100 % dans le navigateur.**
+**A photo of an identity document → typed JSON. 100 % in the browser.**
+
+**English** · [Français](https://github.com/lau-sam/identite-ts/blob/main/README.fr.md)
 
 [![CI](https://github.com/lau-sam/identite-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/lau-sam/identite-ts/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/identite-ts)](https://www.npmjs.com/package/identite-ts)
-[![licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](./LICENSE)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-<img src="docs/demo.gif" alt="Démo : une photo de document d'identité français est déposée dans le navigateur et ressort en JSON structuré" width="720" />
+<img src="docs/demo.gif" alt="Demo: a photo of an identity document is dropped into the browser and comes back as structured JSON" width="720" />
 
 </div>
 
-## 🚀 L'objectif
+## 🚀 The goal
 
-Remplir des formulaires d'identité (nom, prénoms, date de naissance…) est fastidieux et source d'erreurs. `identite-ts` résout ce problème : l'utilisateur photographie son document, votre application reçoit un objet JSON typé — sans qu'aucune donnée ne quitte son navigateur.
+Filling in identity forms (surname, given names, date of birth…) is tedious and error-prone. `identite-ts` solves it: the user photographs their document, your application receives a typed JSON object — and no data ever leaves their browser.
 
-## ⚡ Essayer en 2 minutes
+Reading is **standards-based, not country-based**: the ICAO 9303 machine-readable zones (TD1, TD2, TD3) are read for **any issuing state**. French-specific formats (2D-DOC, NIR) are supported on top of that. See [Countries and formats covered](#countries-and-formats-covered).
+
+## ⚡ Try it in 2 minutes
 
 ```bash
 git clone https://github.com/lau-sam/identite-ts && cd identite-ts
 npm install && cd playground && npm install && npm run dev
 ```
 
-Pas de document sous la main ? Testez avec les **spécimens officiels** (documents fictifs publiés pour ce genre d'usage) :
+No document at hand? Use **official specimens** — fictitious documents published for exactly this purpose:
 
-| Document | Spécimen | Ce que l'outil extrait |
+| Document | Specimen | What the library extracts |
 |---|---|---|
-| CNI 2021 (verso) | [Wikimedia Commons — carte MARTIN Maëlys](https://commons.wikimedia.org/wiki/File:Carte_identit%C3%A9_%C3%A9lectronique_fran%C3%A7aise_(2021,_verso).png) | MRZ complète, checksums 100 % valides |
-| Carte Vitale | [Wikipédia — Carte Vitale](https://fr.wikipedia.org/wiki/Carte_Vitale) | NIR + clé, sexe, naissance, département |
-| Passeport | [ICAO Doc 9303 partie 4, annexe A](https://www.icao.int/publications/doc-series/doc-9303) (spécimen « Utopia ») | MRZ TD3, identité complète |
+| French ID card 2021 (back) | [Wikimedia Commons — MARTIN Maëlys card](https://commons.wikimedia.org/wiki/File:Carte_identit%C3%A9_%C3%A9lectronique_fran%C3%A7aise_(2021,_verso).png) | Full MRZ, 100 % valid checksums |
+| French health card (Vitale) | [Wikipédia — Carte Vitale](https://fr.wikipedia.org/wiki/Carte_Vitale) | NIR + check key, sex, birth, department |
+| Passport | [ICAO Doc 9303 part 4, annex A](https://www.icao.int/publications/doc-series/doc-9303) ("Utopia" specimen) | TD3 MRZ, full identity |
 
-Vérifié sur ces spécimens : la CNI 2021 ressort avec **tous les checksums valides**, la carte Vitale avec **clé NIR validée** et lieu de naissance résolu.
+Verified on these specimens: the 2021 ID card comes out with **all checksums valid**, the health card with a **validated NIR key** and a resolved place of birth.
 
-- **100 % côté client** : aucune donnée ne quitte le navigateur (RGPD par construction).
-- **Fondé sur les codes, pas seulement l'OCR** : MRZ (checksums ICAO 9303), NIR (clé 97), 2D-DOC ANTS — parsing déterministe et validable.
-- **TypeScript first** : modèles typés, chaque champ porte sa provenance et la validité de son checksum.
-- **Indépendant du framework** : une fonction asynchrone, zéro dépendance UI.
-- **Léger par défaut** : les moteurs lourds (OCR ~2 Mo, Datamatrix ~1 Mo) sont chargés à la volée uniquement quand nécessaire ; les parseurs purs pèsent quelques Ko.
+- **100 % client-side**: no data leaves the browser (GDPR by construction).
+- **Code-based, not OCR-only**: MRZ (ICAO 9303 checksums), NIR (mod-97 key), ANTS 2D-DOC — deterministic, verifiable parsing.
+- **TypeScript first**: typed models; every field carries its provenance and its checksum status.
+- **Framework-agnostic**: one async function, zero UI dependencies.
+- **Light by default**: heavy engines (OCR ~2 MB, Datamatrix ~1 MB) load lazily, only when needed; the pure parsers weigh a few KB.
+
+## A note on language
+
+The library was written in French and its **public API uses French identifiers**. They will not be renamed before a 1.0 release, so here is the mapping you need:
+
+| API | Meaning | API | Meaning |
+|---|---|---|---|
+| `identite` | identity | `paysEmetteur` | issuing state |
+| `nom` | surname | `prenoms` | given names |
+| `dateNaissance` | date of birth | `dateExpiration` | expiry date |
+| `lieuNaissance` | place of birth | `nationalite` | nationality |
+| `sexe` | sex | `numeroDocument` | document number |
+| `valeur` | value | `valide` | valid |
+| `checksumValide` | checksum valid | `categorie` | category |
+| `codeDocument` | document code | `codesBarres` | barcodes |
+| `brut` | raw | `inconnu` | unknown |
+| `cleValide` | check key valid | `resoudreCommune` | resolve municipality |
 
 ## Installation
 
@@ -47,30 +68,30 @@ npm install identite-ts
 
 ## Usage
 
-### Tout-en-un : photo → JSON
+### All-in-one: photo → JSON
 
 ```ts
 import { extractDocument } from 'identite-ts';
 
-const resultat = await extractDocument(fichierPhoto); // File, Blob, HTMLImageElement ou ImageData
+const result = await extractDocument(photoFile); // File, Blob, HTMLImageElement or ImageData
 
-if (resultat.document !== 'inconnu') {
-  console.log(resultat.data?.nom?.valeur);           // 'MARTIN'
-  console.log(resultat.data?.dateNaissance?.valeur); // '1990-07-13'
-  console.log(resultat.document);                    // 'carte-identite' | 'passeport' | 'carte-vitale'
-  console.log(resultat.paysEmetteur);                // 'FRA' — État émetteur, ≠ nationalité du titulaire
-  console.log(resultat.confidence);                  // 0.95
-  console.log(resultat.source);                      // 'mrz' | '2ddoc' | 'nir'
+if (result.document !== 'inconnu') {
+  console.log(result.data?.nom?.valeur);           // 'MARTIN'
+  console.log(result.data?.dateNaissance?.valeur); // '1990-07-13'
+  console.log(result.document);                    // 'carte-identite' | 'passeport' | 'carte-vitale'
+  console.log(result.paysEmetteur);                // 'FRA' — issuing state, ≠ holder's nationality
+  console.log(result.confidence);                  // 0.95
+  console.log(result.source);                      // 'mrz' | '2ddoc' | 'nir'
 }
 ```
 
-Pipeline de détection : **2D-DOC** (Datamatrix signé de la CNI 2021) → **MRZ** (2×36, 3×30, 2×44) → **NIR** (carte Vitale). Un document illisible ne jette jamais : `document: 'inconnu'` avec la zone `raw` remplie pour diagnostic.
+Detection pipeline: **2D-DOC** (the signed Datamatrix on the 2021 French ID card) → **MRZ** (2×36, 3×30, 2×44) → **NIR** (French health card). An unreadable document never throws: you get `document: 'inconnu'` with the `raw` section filled in for diagnosis.
 
-La forme 2×36 est ambiguë : elle est partagée par le TD2 de l'ICAO et par l'ancienne CNI française, dont les dispositions sont incompatibles. Les deux lectures sont tentées et celle dont les checksums tombent juste l'emporte.
+The 2×36 shape is ambiguous: it is shared by the ICAO TD2 and by the pre-2021 French ID card, whose layouts are incompatible. Both readings are attempted and the one whose checksums pass wins.
 
-### Parseurs purs (sans OCR, quelques Ko)
+### Pure parsers (no OCR, a few KB)
 
-Utilisables aussi côté serveur (Node ≥ 20) :
+Also usable server-side (Node ≥ 20):
 
 ```ts
 import { parseMrz, parseNir, parse2ddoc } from 'identite-ts';
@@ -80,7 +101,7 @@ const mrz = parseMrz([
   'L898902C36UTO7408122F1204159ZE184226B<<<<<10',
 ]);
 mrz.identite.nom?.valeur;  // 'ERIKSSON'
-mrz.valide;                // true — tous les checksums ICAO passent
+mrz.valide;                // true — every ICAO checksum passes
 
 const nir = parseNir('2 69 05 49 588 157 80');
 nir.sexe;                  // 'F'
@@ -89,119 +110,175 @@ nir.lieuNaissance;         // { type: 'metropole', departement: '49', codeInsee:
 nir.cleValide;             // true
 ```
 
-### Lieu de naissance en clair (référentiel INSEE)
+### Place of birth in plain text (INSEE registry)
 
 ```ts
-import { resolveCommune } from 'identite-ts/insee'; // chunk séparé (~280 Ko gzip)
+import { resolveCommune } from 'identite-ts/insee'; // separate chunk (~280 KB gzip)
 
 resolveCommune('75056'); // { codeInsee: '75056', nom: 'Paris', departement: '75' }
-resolveCommune('49588'); // undefined — commune fusionnée, absente du millésime courant
+resolveCommune('49588'); // undefined — merged municipality, absent from the current edition
 ```
 
-`extractDocument` fait cette résolution automatiquement pour les cartes Vitale (désactivable avec `resoudreCommune: false`).
+`extractDocument` performs this lookup automatically for health cards (disable with `resoudreCommune: false`).
 
-### Codes 2D non interprétés
+### Uninterpreted 2D codes
 
-Tous les Datamatrix et QR lus sur l'image sont exposés dans `raw.codesBarres`, avec leur format. Seul le 2D-DOC est interprété : les autres charges utiles sont restituées telles quelles, sans être comprises.
+Every Datamatrix and QR code found in the image is exposed in `raw.codesBarres`, along with its format. Only 2D-DOC is interpreted: other payloads are returned verbatim, without being understood.
 
-C'est le cas du QR gravé au verso du permis de conduire suisse, dont le contenu n'a pas de spécification publique. La bibliothèque ne devine pas : elle ne renseigne `data` que depuis une source validée par un code de contrôle.
+That is the case for the QR code engraved on the back of the Swiss driving licence, whose content has no public specification. The library does not guess: it only fills `data` from a source validated by a check code.
 
-Pour signaler un format inconnu sans publier les données d'un document réel :
+To report an unknown format without publishing data from a real document:
 
 ```ts
 import { decrireCodeBarre } from 'identite-ts';
 
-const inconnus = (resultat.raw.codesBarres ?? []).filter((c) => !c.texte.startsWith('DC'));
-console.log(inconnus.map(decrireCodeBarre));
+const unknown = (result.raw.codesBarres ?? []).filter((c) => !c.texte.startsWith('DC'));
+console.log(unknown.map(decrireCodeBarre));
 // [{ format: 'QRCode', longueur: 214, alphabet: 'base64url', prefixe: 'CH01', separateurs: [] }]
 ```
 
-Cette description est faite pour être collée dans une issue : elle ne contient ni nom, ni date, ni numéro. Seul le préfixe en est un extrait littéral — les formats connus y placent un marqueur structurel, mais relisez-le avant publication.
+This description is meant to be pasted into an issue: it contains no name, no date, no number. Only the prefix is a literal excerpt — known formats put a structural marker there — but read it before publishing.
 
-### Chaque champ connaît sa fiabilité
+### Every field knows how reliable it is
 
 ```ts
 interface Champ<T> {
-  valeur: T;
+  valeur: T;                // value
   source: 'mrz' | '2ddoc' | 'nir' | 'insee' | 'ocr';
-  checksumValide?: boolean; // présent si la source porte un checksum
+  checksumValide?: boolean; // present when the source carries a checksum
 }
 ```
 
-Votre formulaire peut ainsi pré-remplir en vert ce qui est validé par checksum et en orange ce qui vient d'un OCR brut.
+Your form can therefore pre-fill in green what a checksum validates, and in amber what comes from raw OCR.
 
-## Données extraites par document
+## Data extracted per document
 
-| Document | Source | Données |
+| Document | Source | Data |
 |---|---|---|
-| CNI française (ancienne) | MRZ 2×36 (IDFRA) | nom, prénoms, sexe, date de naissance, n° de carte |
-| CNI française 2021 | 2D-DOC ou MRZ 3×30 | + nationalité, date d'expiration |
-| Carte d'identité étrangère | MRZ 3×30 (TD1) | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
-| Titre de séjour, carte officielle | MRZ 2×36 (TD2) | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
-| Passeport | MRZ 2×44 (TD3) | nom, prénoms, sexe, date de naissance, nationalité, n°, expiration |
-| Carte Vitale | NIR + OCR | sexe, année + mois de naissance, lieu de naissance (via INSEE) ; nom et prénoms lus en OCR (sans checksum) |
+| French ID card (pre-2021) | MRZ 2×36 (IDFRA) | surname, given names, sex, date of birth, card number |
+| French ID card 2021 | 2D-DOC or MRZ 3×30 | + nationality, expiry date |
+| Non-French ID card | MRZ 3×30 (TD1) | surname, given names, sex, date of birth, nationality, number, expiry |
+| Residence permit, official card | MRZ 2×36 (TD2) | surname, given names, sex, date of birth, nationality, number, expiry |
+| Passport | MRZ 2×44 (TD3) | surname, given names, sex, date of birth, nationality, number, expiry |
+| French health card (Vitale) | NIR + OCR | sex, year + month of birth, place of birth (via INSEE); surname and given names read by OCR (no checksum) |
 
-### Documents non français
+## Countries and formats covered
 
-Les formats **TD1**, **TD2** et **TD3** sont normalisés par l'[ICAO 9303](https://www.icao.int/publications/doc-series/doc-9303) : la lecture ne dépend d'aucune particularité nationale. Toute carte d'identité, tout titre de séjour et tout passeport conforme est donc lu, quel que soit l'État émetteur — documents suisses, allemands, italiens…
+**Coverage is per format, not per country.** Three of the five formats read are international standards: any state that conforms is read, without a single line of code dedicated to it.
 
-Le TD2 couvre notamment les **titres de séjour européens** : le [règlement (CE) 1030/2002](https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX%3A32002R1030) impose une zone de lecture conforme aux normes de l'OACI, sans fixer le format — TD1 et TD2 sont l'un comme l'autre valides, et tous deux sont lus.
+### International formats — every issuing state
 
-`extractDocument` et `parseMrz` distinguent deux informations trop souvent confondues :
+| Format | Shape | Documents | Scope |
+|---|---|---|---|
+| **TD3** | 2 lines × 44 | Passports | Any state conforming to [ICAO 9303](https://www.icao.int/publications/doc-series/doc-9303) |
+| **TD1** | 3 lines × 30 | ID cards, residence permits | same |
+| **TD2** | 2 lines × 36 | Residence permits, official travel cards | same |
+
+These three layouts are standardised, so the reader knows no national particularity whatsoever. It reads a structure, verifies the checksums, and exposes the issuing state verbatim. A conforming Swiss, German, Italian or Brazilian card is therefore read with no additional work.
+
+TD2 notably covers **European residence permits**: [Regulation (EC) 1030/2002](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32002R1030) requires a machine-readable zone conforming to ICAO standards without fixing the format — TD1 and TD2 are both valid, and both are read.
+
+`extractDocument` and `parseMrz` distinguish two things that are too often conflated:
 
 ```ts
-mrz.paysEmetteur            // 'CHE' — État qui a délivré le document
-mrz.identite.nationalite    // 'FRA' — nationalité du titulaire
-mrz.codeDocument            // 'ID'  — code brut de la MRZ
+mrz.paysEmetteur            // 'CHE' — state that issued the document
+mrz.identite.nationalite    // 'FRA' — holder's nationality
+mrz.codeDocument            // 'ID'  — raw code from the MRZ
 mrz.categorie               // 'carte-identite' | 'passeport' | 'inconnu'
 ```
 
-`categorie` ne se déduit que du **premier** caractère du code document (`P` passeport, `A`/`C`/`I` autre document officiel). Le second caractère n'a jamais été normalisé — l'ICAO ne l'uniformise qu'à partir de la 9ᵉ édition de la spécification — il est donc exposé brut dans `codeDocument` sans être interprété.
+`categorie` is derived from the **first** character of the document code only (`P` passport, `A`/`C`/`I` other official document). The second character has never been standardised — ICAO only harmonises it from the 9th edition of the specification onwards — so it is exposed verbatim in `codeDocument` and never interpreted.
 
-En revanche, le **2D-DOC** (dispositif ANTS) et le **NIR** sont des formats strictement français : eux ne s'appliquent qu'aux documents français.
+### National formats — France only
 
-## Limites connues
-
-- **L'adresse n'existe dans aucun code optique.** Elle n'est présente que dans la puce NFC (hors périmètre) ou imprimée au dos de l'ancienne CNI (souvent périmée).
-- Le NIR ne donne que l'année et le mois de naissance, jamais le jour ; le siècle est déduit (`anneeProbable`).
-- La qualité de l'OCR dépend de la photo : privilégiez un cadrage net de la zone MRZ.
-- Le référentiel INSEE embarqué couvre le millésime courant : une commune fusionnée référencée par un vieux NIR peut ne pas être résolue.
-- Par défaut, tesseract.js et zxing-wasm téléchargent leurs assets (WASM, modèles de langue) depuis un CDN public au premier usage. Les données de l'utilisateur ne quittent jamais le navigateur, mais pour un déploiement air-gapped ou strictement auto-hébergé, servez ces assets vous-même via les options `ocr.langPath`/`ocr.workerPath`/`ocr.corePath` et `datamatrix.wasmBaseUrl`.
-
-## Jeux de données publics
-
-Les spécimens listés plus haut servent à essayer la bibliothèque à la main. Pour la **mesurer** — taux de lecture MRZ, précision de localisation, régressions — il faut des jeux annotés. Ceux-ci sont publics, et leur licence a été relue sur la source primaire (`license.txt` du dépôt officiel ou fiche Zenodo) :
-
-| Jeu | Ce qu'il apporte ici | Licence |
+| Format | Documents | An equivalent where you live? |
 |---|---|---|
-| [DocXPand-25k](https://github.com/QuickSign/docxpand) ([arXiv:2407.20662](https://arxiv.org/abs/2407.20662)) | 24 994 images de documents fictifs incrustés sur fonds réels, MRZ TD1/TD2/TD3 et champs annotés — localisation, OCR, MRZ | CC BY-NC-SA 4.0 (**non commercial**) |
-| MIDV-500 et MIDV-2020 (`ftp://smartengines.com/midv-500/`) | Documents filmés en conditions dégradées : reflets, flou, cadrage partiel — la matière du chantier localisation/rectification | CC BY-SA 2.5 |
-| [MIDV-Holo](https://github.com/SmartEngines/midv-holo) | Originaux et attaques par présentation, hologrammes annotés — détection de fraude | CC BY-SA 2.5 |
-| [DLC-2021](https://zenodo.org/records/6466770) | Recaptures d'écran, photocopies, documents sans lamination — document rejoué | CC BY-SA 2.5 |
-| [SmartDoc 2015](https://zenodo.org/records/1230218) | Documents A4 filmés au smartphone : pas des pièces d'identité, mais la référence pour la localisation en vidéo | CC BY 4.0 |
+| **2D-DOC** (ANTS) | 2021 ID card, official certificates | Several states have their own signed 2D code. The parser is structurally reusable. |
+| **NIR** (mod-97 key) | Health card (Vitale) | Any national number carrying a check key parses on the same principle. |
+| **IDFRA** | Pre-2021 French ID card | Pre-ICAO national layouts exist elsewhere too. |
 
-**Aucun de ces jeux n'est redistribué ici, et aucun n'entrera dans ce dépôt ni dans le paquet npm.** Le projet est sous licence MIT, qui autorise l'usage commercial : y commiter des images sous CC BY-NC-SA ou CC BY-SA reviendrait à leur accorder des droits que leurs auteurs n'ont pas donnés. Les utiliser localement pour évaluer est en revanche sans difficulté. Deux pièges à connaître : le partage à l'identique se propage à tout jeu dérivé ou augmenté que l'on publierait, et la licence affichée sur une page arXiv couvre l'article, jamais les données.
+### Verified against a specimen
 
-## Feuille de route
+This table is distinct from the two above: it does not state what is *readable*, but what a test suite actually covers **today**.
 
-- [ ] **Localisation et rectification du document** : détecter le quadrilatère de la carte dans la photo, corriger la perspective, normaliser au format ID-1. Lève la contrainte de cadrage décrite dans les limites ci-dessus.
-- [ ] **Détection de fraude** : repérer un document rejoué (photo d'écran, photocopie, capture), altéré ou incohérent — à commencer par les indices vérifiables sans référentiel (cohérence MRZ ↔ zone visuelle, checksums, dates impossibles).
-- [ ] Vérification cryptographique de la signature 2D-DOC (ECDSA, certificats ANTS — [spécifications officielles](https://ants.gouv.fr/nos-missions/les-solutions-numeriques/2d-doc))
-- [ ] Lecture de la puce NFC (port de [cnie-python-tools](https://github.com/hufon/cnie-python-tools), WebNFC)
-- [ ] OCR des zones visuelles complémentaires (lieu de naissance CNI/passeport)
-- [ ] Référentiel INSEE historisé (communes fusionnées)
+| State | Documents | Formats | Specimen |
+|---|---|---|---|
+| 🇫🇷 France | 2021 ID card, pre-2021 ID card, passport, health card | TD1, IDFRA, TD3, 2D-DOC, NIR | MARTIN, LOISEAU, ANTS specimens |
+| 🇨🇭 Switzerland | ID card | TD1 | MUSTER Hans Peter (fictitious) |
+| 🇩🇪 Germany | Passport | TD3 | Erika Mustermann — country code `D<<` |
+| 🌐 "Utopia" | Passport, residence permit | TD3, TD2 | ICAO 9303, parts 4 and 6 |
 
-## Développement
+**Your country is missing? That does not mean it is unreadable** — only that nobody has verified it yet. This is the single most useful contribution to the project, and it requires writing no code: [open a "country format" issue](https://github.com/lau-sam/identite-ts/issues/new?template=country-format.yml).
+
+> [!CAUTION]
+> **Never attach the photo or the data of a real document** to an issue: issues are public, indexed by search engines, and their history stays readable after deletion. Use a public official specimen, a fictitious MRZ with recomputed checksums, or the output of `decrireCodeBarre` — designed to disclose nothing.
+
+## Why not an LLM?
+
+Because reading an identity document is a **standardised** problem, not a comprehension problem. An MRZ, a 2D-DOC, a NIR are fixed grammars equipped with check codes.
+
+- **Determinism**: same bytes in, same output — indefinitely. No variation between two runs, no drift between two model versions.
+- **Verifiability**: an ICAO checksum can be verified; a hallucination cannot. Every field carries `checksumValide`, so you know what is *proven* and what is *guessed*.
+- **Nothing leaves the browser**: no network call, therefore no identity document handed to a third party.
+- **Cost and latency**: a few KB of parsers, no per-photo cost, no round trip.
+
+**Where an LLM is still better**: unstructured free text, unknown layouts, handwriting, non-Latin scripts outside the MRZ. That is not what this is.
+
+## Known limitations
+
+- **The address exists in no optical code.** It is only in the NFC chip (out of scope) or printed on the back of the pre-2021 ID card (often expired).
+- The NIR only gives the year and month of birth, never the day; the century is inferred (`anneeProbable`).
+- OCR quality depends on the photo: aim for a sharp, well-framed shot of the MRZ.
+- The bundled INSEE registry covers the current edition: a merged municipality referenced by an old NIR may not resolve.
+- By default, tesseract.js and zxing-wasm fetch their assets (WASM, language models) from a public CDN on first use. User data never leaves the browser, but for an air-gapped or strictly self-hosted deployment, serve those assets yourself via the `ocr.langPath`/`ocr.workerPath`/`ocr.corePath` and `datamatrix.wasmBaseUrl` options.
+
+## Public datasets
+
+The specimens listed above are for trying the library by hand. To **measure** it — MRZ read rate, localisation accuracy, regressions — annotated datasets are needed. These are public, and each licence was checked against the primary source (`license.txt` in the official repository, or the Zenodo record):
+
+| Dataset | What it brings here | Licence |
+|---|---|---|
+| [DocXPand-25k](https://github.com/QuickSign/docxpand) ([arXiv:2407.20662](https://arxiv.org/abs/2407.20662)) | 24,994 images of fictitious documents composited onto real backgrounds, with annotated TD1/TD2/TD3 MRZs and fields — localisation, OCR, MRZ | CC BY-NC-SA 4.0 (**non-commercial**) |
+| MIDV-500 and MIDV-2020 (`ftp://smartengines.com/midv-500/`) | Documents filmed in degraded conditions: glare, blur, partial framing — the raw material for the localisation/rectification work | CC BY-SA 2.5 |
+| [MIDV-Holo](https://github.com/SmartEngines/midv-holo) | Originals and presentation attacks, annotated holograms — fraud detection | CC BY-SA 2.5 |
+| [DLC-2021](https://zenodo.org/records/6466770) | Screen recaptures, photocopies, unlaminated documents — replayed documents | CC BY-SA 2.5 |
+| [SmartDoc 2015](https://zenodo.org/records/1230218) | A4 documents filmed on a smartphone: not identity documents, but the reference for localisation in video | CC BY 4.0 |
+
+**None of these datasets is redistributed here, and none will ever enter this repository or the npm package.** The project is MIT licensed, which permits commercial use: committing CC BY-NC-SA or CC BY-SA images would grant rights their authors never gave. Using them locally for evaluation is, by contrast, unproblematic. Two traps worth knowing: share-alike propagates to any derived or augmented dataset you publish, and the licence displayed on an arXiv page covers the paper, never the data.
+
+## Contributing
+
+Contributions are welcome, from any country. The most useful ones, in order:
+
+1. **Report a format that is misread or missing for your country** — [country format issue](https://github.com/lau-sam/identite-ts/issues/new?template=country-format.yml). No code required. A link to a public official specimen is enough to make the problem tractable.
+2. **Add a test against a public specimen** from your country: that is what moves a format from "probably read" to "verified".
+3. **Implement a national format** (signed 2D code, number with a check key) following the pattern in `src/parsers/`.
+
+Two firm rules:
+
+- **No real document data** in an issue, a pull request or a test. Public specimens or fictitious data with recomputed checksums, only.
+- **Never guess.** A field is filled only from a source validated by a check code, or explicitly marked `source: 'ocr'`. A format with no public specification is exposed raw, never interpreted.
+
+## Roadmap
+
+- [ ] **Document localisation and rectification**: detect the card's quadrilateral in the photo, correct perspective, normalise to ID-1. Lifts the framing constraint described in the limitations above.
+- [ ] **Fraud detection**: spot a replayed document (screen photo, photocopy, capture), an altered one, or an inconsistent one — starting with clues verifiable without any registry (MRZ ↔ visual zone consistency, checksums, impossible dates).
+- [ ] Cryptographic verification of the 2D-DOC signature (ECDSA, ANTS certificates — [official specifications](https://ants.gouv.fr/nos-missions/les-solutions-numeriques/2d-doc))
+- [ ] NFC chip reading (port of [cnie-python-tools](https://github.com/hufon/cnie-python-tools), WebNFC)
+- [ ] OCR of complementary visual zones (place of birth on ID card / passport)
+- [ ] Historicised INSEE registry (merged municipalities)
+
+## Development
 
 ```bash
 npm install
 npm test              # vitest
 npm run build         # tsup → dist/
-node scripts/build-insee.ts   # régénère le référentiel des communes
+node scripts/build-insee.ts   # regenerates the municipality registry
 
-cd playground && npm install && npm run dev   # démo locale
+cd playground && npm install && npm run dev   # local demo
 ```
 
-## Licence et auteur
+## Licence and author
 
-[MIT](./LICENSE). Développé par [Coderkaine](https://www.coderkaine.com).
+[MIT](./LICENSE). Built by [Coderkaine](https://www.coderkaine.com).

@@ -14,6 +14,19 @@ données du document lu.
 - `DatamatrixEngine.decoder` renvoie ces mêmes `CodeBarre[]` au lieu de
   `string[]` — sans effet, sauf pour un moteur injecté par l'appelant.
 
+### Documentation
+
+- Le README passe en **anglais** ; la version française devient `README.fr.md`, avec un
+  sélecteur de langue dans les deux. La bibliothèque lit des formats internationaux
+  (ICAO 9303) : un README uniquement francophone en masquait la portée.
+- Nouvelle section « pays et formats couverts », qui sépare trois choses jusque-là
+  confondues : les formats internationaux (tout État émetteur), les formats propres
+  à la France (2D-DOC, NIR, IDFRA) et la liste des documents réellement **vérifiés
+  par un test** (FRA, CHE, DEU, spécimens ICAO).
+- Formulaire d'issue `country-format.yml` pour signaler un format mal lu dans un pays
+  donné, avec interdiction explicite de joindre les données d'un document réel.
+- La description npm passe en anglais et les mots-clés couvrent les formats ICAO.
+
 ### Ajouts
 
 - `decrireCodeBarre` : résume un code 2D en métadonnées non identifiantes
