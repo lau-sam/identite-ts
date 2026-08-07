@@ -8,7 +8,14 @@
 import { readFile } from 'node:fs/promises';
 // Importe le build (npm run build d'abord) : Node ne résout pas les imports TS
 // sans extension. Exclu du typecheck (tsconfig) car dist/ n'existe pas en CI.
-import { detecterMrz, detecterNir, parse2ddoc, parseMrz, parseNir } from '../dist/index.js';
+import {
+  decrireCodeBarre,
+  detecterMrz,
+  detecterNir,
+  parse2ddoc,
+  parseMrz,
+  parseNir,
+} from '../dist/index.js';
 
 const fichiers = process.argv.slice(2);
 if (!fichiers.length) {
@@ -33,6 +40,11 @@ for (const fichier of fichiers) {
       if (code.text.startsWith('DC')) {
         const doc = parse2ddoc(code.text);
         console.log('  2D-DOC :', JSON.stringify(doc.identite));
+      } else {
+        // Format inconnu : résumé dépourvu de donnée personnelle, joignable
+        // tel quel à un rapport de bug — contrairement au contenu brut.
+        const description = decrireCodeBarre({ format: code.format, texte: code.text });
+        console.log('  diagnostic partageable :', JSON.stringify(description));
       }
     }
     if (!codes.some((c) => c.isValid)) console.log('• aucun Datamatrix/QR');

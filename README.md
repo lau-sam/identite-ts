@@ -100,6 +100,24 @@ resolveCommune('49588'); // undefined — commune fusionnée, absente du millés
 
 `extractDocument` fait cette résolution automatiquement pour les cartes Vitale (désactivable avec `resoudreCommune: false`).
 
+### Codes 2D non interprétés
+
+Tous les Datamatrix et QR lus sur l'image sont exposés dans `raw.codesBarres`, avec leur format. Seul le 2D-DOC est interprété : les autres charges utiles sont restituées telles quelles, sans être comprises.
+
+C'est le cas du QR gravé au verso du permis de conduire suisse, dont le contenu n'a pas de spécification publique. La bibliothèque ne devine pas : elle ne renseigne `data` que depuis une source validée par un code de contrôle.
+
+Pour signaler un format inconnu sans publier les données d'un document réel :
+
+```ts
+import { decrireCodeBarre } from 'identite-ts';
+
+const inconnus = (resultat.raw.codesBarres ?? []).filter((c) => !c.texte.startsWith('DC'));
+console.log(inconnus.map(decrireCodeBarre));
+// [{ format: 'QRCode', longueur: 214, alphabet: 'base64url', prefixe: 'CH01', separateurs: [] }]
+```
+
+Cette description est faite pour être collée dans une issue : elle ne contient ni nom, ni date, ni numéro. Seul le préfixe en est un extrait littéral — les formats connus y placent un marqueur structurel, mais relisez-le avant publication.
+
 ### Chaque champ connaît sa fiabilité
 
 ```ts

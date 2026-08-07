@@ -1,6 +1,29 @@
 # Changelog
 
-## 0.3.0 — à paraître
+## 0.4.0 — à paraître
+
+Lecture des codes 2D non interprétés ([#3](https://github.com/lau-sam/identite-ts/issues/3)).
+Les QR étaient déjà décodés, mais rien ne distinguait leur format de celui d'un
+Datamatrix, et leur contenu ne pouvait pas être signalé sans divulguer les
+données du document lu.
+
+### Changements incompatibles
+
+- `RawExtraction.payloadsDatamatrix` (`string[]`) devient `codesBarres`
+  (`CodeBarre[]`), chaque entrée portant son `format` et son `texte`.
+- `DatamatrixEngine.decoder` renvoie ces mêmes `CodeBarre[]` au lieu de
+  `string[]` — sans effet, sauf pour un moteur injecté par l'appelant.
+
+### Ajouts
+
+- `decrireCodeBarre` : résume un code 2D en métadonnées non identifiantes
+  (format, longueur, famille de caractères, préfixe, séparateurs de contrôle),
+  destinées à être jointes à un rapport de bug sur un format non documenté.
+- Le playground affiche cette description pour tout code qu'il ne sait pas
+  interpréter, en rappelant que le résultat complet contient les données du
+  porteur et n'a pas à être publié.
+
+## 0.3.0 — 2026-08-07
 
 Lecture des titres de séjour ([#2](https://github.com/lau-sam/identite-ts/issues/2)) et
 correction de deux lectures silencieusement fausses.

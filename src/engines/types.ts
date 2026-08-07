@@ -16,7 +16,18 @@ export interface OcrEngine {
   liberer(): Promise<void>;
 }
 
+/** Symbole 2D lu sur l'image, avec son contenu tel quel. */
+export interface CodeBarre {
+  /** Format du symbole, tel que nommé par zxing (`DataMatrix`, `QRCode`…). */
+  format: string;
+  /**
+   * Contenu brut. Seul le 2D-DOC est interprété par la bibliothèque ; les
+   * autres charges utiles sont exposées sans être comprises.
+   */
+  texte: string;
+}
+
 export interface DatamatrixEngine {
-  /** Décode les codes-barres 2D de l'image et renvoie leurs contenus texte. */
-  decoder(image: ImageData): Promise<string[]>;
+  /** Décode les codes-barres 2D de l'image (Datamatrix et QR). */
+  decoder(image: ImageData): Promise<CodeBarre[]>;
 }
