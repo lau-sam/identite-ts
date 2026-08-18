@@ -7,9 +7,10 @@ export { creerOcrEngine } from './engines/ocr';
 export type { CodeBarre, DatamatrixEngine, ModeOcr, OcrEngine } from './engines/types';
 export type { ExtractionResult, ExtractOptions, RawExtraction, TypeDocument } from './extract';
 export { detecterMrz, detecterNir, extractDocument } from './extract';
-export type { ImageDataLike, ImageInput } from './image/preprocess';
+export type { ImageDataLike, ImageInput, OptionsSauvola } from './image/preprocess';
 export {
   binariser,
+  binariserAdaptatif,
   etirerContraste,
   niveauxDeGris,
   preparerImage,
