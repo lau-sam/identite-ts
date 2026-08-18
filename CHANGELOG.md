@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.1 — à paraître
+
+### Corrections
+
+- **La lecture échouait chez tout consommateur empaqueté**, sur un
+  `createWorker is not a function` que rien ne rattachait à sa cause. `tesseract.js` est
+  publié en CommonJS pur — `"type": "commonjs"`, sans champ `exports` — et le namespace
+  rendu par `import()` porte ses exports à plat ou sous `default` selon qui assemble le
+  code : Node applique sa détection d'exports nommés, un bundler applique la sienne. Le
+  banc d'essai, qui consomme les sources, ne voyait donc rien ; une application Vite
+  consommant le paquet publié échouait à chaque lecture. L'export est désormais résolu
+  par les deux chemins.
+
+
 ## 0.4.0 — 2026-08-18
 
 Lecture des codes 2D non interprétés ([#3](https://github.com/lau-sam/identite-ts/issues/3)).
