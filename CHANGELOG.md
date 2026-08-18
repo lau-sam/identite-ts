@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 — à paraître
+## 0.4.0 — 2026-08-18
 
 Lecture des codes 2D non interprétés ([#3](https://github.com/lau-sam/identite-ts/issues/3)).
 Les QR étaient déjà décodés, mais rien ne distinguait leur format de celui d'un
@@ -27,14 +27,52 @@ données du document lu.
   donné, avec interdiction explicite de joindre les données d'un document réel.
 - La description npm passe en anglais et les mots-clés couvrent les formats ICAO.
 
+### Corrections
+
+Éprouvée sur une carte Vitale et une CNI authentiques, la lecture s'est révélée bien
+plus fragile que sur les spécimens : les défauts ci-dessous ne se voient que sur photo.
+
+- **Une carte Vitale réelle sortait `inconnu`, numéro pourtant imprimé en clair.**
+  La recherche du NIR était la seule étape à soumettre l'image brute à l'OCR, alors
+  qu'elle vise la seule pièce à fond tramé : le moteur lisait la trame et ne rendait
+  que du bruit. Une passe en seuillage adaptatif s'ajoute après la passe brute, qui
+  reste première — un seuillage peut à l'inverse effacer un texte fin. Mesuré sur la
+  carte en cause : 43 % de texte reconnu en plus, et le numéro trouvé.
+- **La MRZ s'arrêtait à la première passe qui se parse**, figeant une lecture aux
+  checksums faux là où une passe suivante faisait mieux ; une CNI restait bloquée à
+  47 % de confiance, nom et prénoms marqués suspects. Les passes sont désormais toutes
+  évaluées et la meilleure l'emporte — une lecture parfaite coûte toujours une seule
+  passe.
+- **Un `<` de remplissage lu comme une lettre s'accrochait au nom** (« …EN » devenait
+  « …ENS »), et la ligne, trop longue de quelques caractères de décor, était parfois
+  écartée d'emblée. La tolérance est élargie et une variante nettoyée entre en
+  concurrence, retenue seulement si un checksum la valide.
+- **Un garde-fou contre la certification d'une lecture fausse.** Élargir ainsi la
+  recherche a un effet pervers : le contrôle composite ne vaut qu'un chiffre, donc
+  parmi des centaines de combinaisons l'une finit par le satisfaire au hasard. Un nom
+  absurde ressortait certifié à 95 % de confiance. Un contrôle de forme sur la zone
+  nom, plus lourd qu'un checksum, l'interdit — mieux vaut une lecture honnêtement
+  marquée suspecte qu'une erreur silencieuse.
+
 ### Ajouts
 
+- `binariserAdaptatif` : seuillage adaptatif de Sauvola, en complément d'`binariser`
+  (Otsu). Otsu cherche un seuil unique pour toute l'image et suppose donc un fond
+  uniforme — hypothèse fausse sur une carte à fond coloré parcouru d'une trame de
+  sécurité, où il range la trame et le texte du même côté. Sauvola compare chaque pixel
+  à son seul voisinage, via des images intégrales (temps constant par pixel, quelle que
+  soit la fenêtre). Otsu reste en place : il vaut mieux sur la MRZ.
 - `decrireCodeBarre` : résume un code 2D en métadonnées non identifiantes
   (format, longueur, famille de caractères, préfixe, séparateurs de contrôle),
   destinées à être jointes à un rapport de bug sur un format non documenté.
 - Le playground affiche cette description pour tout code qu'il ne sait pas
   interpréter, en rappelant que le résultat complet contient les données du
   porteur et n'a pas à être publié.
+- Le playground produit un **rapport de diagnostic partageable** : compteurs, longueurs,
+  présence de motifs, trace des passes OCR et gabarit du texte reconnu où chaque lettre
+  devient « A » et chaque chiffre « 9 ». La structure reste lisible, la valeur disparaît,
+  et le rapport peut être joint à une issue. S'y ajoutent les vignettes de ce que le
+  moteur reçoit vraiment et une recherche de réparation de la MRZ.
 
 ## 0.3.0 — 2026-08-07
 
