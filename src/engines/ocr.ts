@@ -1,3 +1,4 @@
+import { resoudreExport } from './interop';
 import type { ModeOcr, OcrEngine } from './types';
 
 export interface OcrOptions {
@@ -33,7 +34,14 @@ export function creerOcrEngine(options: OcrOptions = {}): OcrEngine {
 
   async function obtenirWorker(): Promise<import('tesseract.js').Worker> {
     if (worker) return worker;
-    const { createWorker } = await import('tesseract.js');
+    // tesseract.js est publié en CommonJS pur : selon l'assembleur, ses exports sont à plat
+    // ou rangés sous « default ». Déstructurer directement casse chez les consommateurs
+    // empaquetés — voir `resoudreExport`.
+    const module = await import('tesseract.js');
+    const createWorker = resoudreExport<typeof import('tesseract.js').createWorker>(
+      module,
+      'createWorker',
+    );
     worker = await createWorker(options.langues ?? 'fra', undefined, {
       ...(options.langPath ? { langPath: options.langPath } : {}),
       ...(options.workerPath ? { workerPath: options.workerPath } : {}),
