@@ -1,6 +1,6 @@
 {
   "name": "identite-ts",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Client-side extraction of structured data from identity documents, in the browser: ICAO 9303 MRZ (TD1/TD2/TD3) for any issuing state, plus French 2D-DOC and NIR.",
   "keywords": [
     "mrz",
