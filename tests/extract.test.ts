@@ -1,8 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import type { ExtractOptions } from '../src/extract';
-import { extractDocument } from '../src/extract';
+import { detecterMrz, extractDocument } from '../src/extract';
+import { parseMrz } from '../src/parsers/mrz';
 
 const IMAGE_FACTICE = { width: 1, height: 1, data: new Uint8ClampedArray(4) } as ImageData;
+
+/**
+ * Image en dégradé de gris moyens : aucun pixel n'y vaut 0 ni 255, si bien qu'un
+ * moteur factice peut décider s'il a reçu l'image brute ou une copie binarisée.
+ */
+function imageEnDegrade(largeur = 40, hauteur = 40): ImageData {
+  const data = new Uint8ClampedArray(largeur * hauteur * 4);
+  for (let i = 0; i < largeur * hauteur; i++) {
+    const niveau = 60 + (i % 120);
+    data.set([niveau, niveau, niveau, 255], i * 4);
+  }
+  return { width: largeur, height: hauteur, data } as ImageData;
+}
+
+function estBinarisee(image: ImageData): boolean {
+  for (let i = 0; i < image.data.length; i += 4) {
+    if (image.data[i] !== 0 && image.data[i] !== 255) return false;
+  }
+  return true;
+}
 
 const CODE_2DDOC = [
   'DC04FR011234111E111F0001FR',
@@ -173,6 +194,119 @@ describe('extractDocument via NIR', () => {
     expect(r.data?.prenoms).toBeUndefined();
   });
 
+  it('retient la meilleure passe MRZ, pas la première qui se parse', async () => {
+    // Une première passe peut rendre une MRZ lisible mais fautive : l'OCR confond un
+    // caractère et les checksums tombent faux. Constaté sur une CNI réelle, qui sortait
+    // figée à 47 % de confiance. Une passe ultérieure, mieux préparée, doit l'emporter.
+    const DEGRADEE = [
+      'P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<',
+      'L898902C36UTO7408123F1204159ZE184226B<<<<<10',
+    ];
+    let appels = 0;
+    const r = await extractDocument(IMAGE_FACTICE, {
+      preparer: async () => IMAGE_FACTICE,
+      engines: {
+        datamatrix: {
+          async decoder() {
+            return [];
+          },
+        },
+        ocr: {
+          async reconnaitre(_image, mode) {
+            if (mode !== 'mrz') return '';
+            appels++;
+            return (appels === 1 ? DEGRADEE : TD3).join('\n');
+          },
+          async liberer() {},
+        },
+      },
+    });
+    expect(appels).toBeGreaterThan(1);
+    expect(r.data?.dateNaissance?.checksumValide).toBe(true);
+    expect(r.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it("s'arrête dès qu'une passe MRZ a tous ses checksums valides", async () => {
+    let appels = 0;
+    await extractDocument(IMAGE_FACTICE, {
+      preparer: async () => IMAGE_FACTICE,
+      engines: {
+        datamatrix: {
+          async decoder() {
+            return [];
+          },
+        },
+        ocr: {
+          async reconnaitre(_image, mode) {
+            if (mode !== 'mrz') return '';
+            appels++;
+            return TD3.join('\n');
+          },
+          async liberer() {},
+        },
+      },
+    });
+    expect(appels).toBe(1);
+  });
+
+  it('binarise avant de chercher le NIR, comme pour la MRZ', async () => {
+    // Reproduit le fond guilloché d'une vraie carte Vitale : tant que l'image n'est pas
+    // binarisée, l'OCR ne rend que du bruit. Sans cette passe, la carte sortait `inconnu`
+    // alors que le NIR y est imprimé en clair.
+    const image = imageEnDegrade();
+    const vues: boolean[] = [];
+    const r = await extractDocument(image, {
+      preparer: async () => image,
+      engines: {
+        datamatrix: {
+          async decoder() {
+            return [];
+          },
+        },
+        ocr: {
+          async reconnaitre(recue, mode) {
+            if (mode !== 'texte') return '';
+            const binarisee = estBinarisee(recue);
+            vues.push(binarisee);
+            return binarisee ? 'CARTE VITALE\n2 69 05 75 056 157 12' : 'A . ~ ° , ;';
+          },
+          async liberer() {},
+        },
+      },
+    });
+    expect(vues).toContain(true);
+    expect(r.document).toBe('carte-vitale');
+    expect(r.raw.nir).toBe('2690575056157');
+  });
+
+  it("garde une passe sur l'image non binarisée", async () => {
+    // Symétrique du test précédent : un texte fin et peu contrasté survit parfois mal au
+    // seuillage d'Otsu. Les deux passes doivent exister, pas l'une à la place de l'autre.
+    const image = imageEnDegrade();
+    const vues: boolean[] = [];
+    const r = await extractDocument(image, {
+      preparer: async () => image,
+      engines: {
+        datamatrix: {
+          async decoder() {
+            return [];
+          },
+        },
+        ocr: {
+          async reconnaitre(recue, mode) {
+            if (mode !== 'texte') return '';
+            const binarisee = estBinarisee(recue);
+            vues.push(binarisee);
+            return binarisee ? '' : 'CARTE VITALE\n2 69 05 75 056 157 12';
+          },
+          async liberer() {},
+        },
+      },
+    });
+    expect(vues).toContain(false);
+    expect(r.document).toBe('carte-vitale');
+  });
+
   it('peut désactiver la résolution INSEE', async () => {
     const r = await extractDocument(IMAGE_FACTICE, {
       ...optionsAvec({ ocrTexte: '2 69 05 75 056 157 12' }),
@@ -277,5 +411,57 @@ describe('extractDocument sans détection', () => {
     const traces: string[] = [];
     await extractDocument(IMAGE_FACTICE, optionsAvec({ traces }));
     expect(traces).not.toContain('liberer');
+  });
+});
+
+describe('detecterMrz — parasites OCR sur un document réel', () => {
+  // Spécimen d'ancienne CNI (IDFRA 2×36), checksums valides.
+  const L1 = 'IDFRALOISEAU<<<<<<<<<<<<<<<<<<<<<<<<';
+  const L2 = '970675K002774HERVE<<DJAMEL<7303216M4';
+
+  it('retrouve une MRZ noyée sous six caractères de décor', () => {
+    // Le bord de la carte et le fond sont lus comme des caractères : sur une photo
+    // réelle, les lignes sortent à 39 voire 42 signes au lieu de 36.
+    expect(detecterMrz(`X9${L1}9X\nZ8${L2}8Z`)).toEqual([L1, L2]);
+  });
+
+  it("répare un '<' lu comme une lettre dans la zone nom, quand le composite le confirme", () => {
+    // Cas constaté : un caractère de remplissage lu comme une lettre s'accroche au nom
+    // (« …EN » devenait « …ENS »). Le composite IDFRA couvre toute la ligne 1 : une
+    // variante nettoyée se prouve donc elle-même, on n'invente rien.
+    const abime = `${L1.slice(0, 20)}S${L1.slice(21)}`;
+    const lignes = detecterMrz(`${abime}\n${L2}`);
+    expect(lignes).toBeDefined();
+    const mrz = parseMrz(lignes as string[]);
+    expect(mrz.identite.nom?.valeur).toBe('LOISEAU');
+    expect(mrz.checksums.composite).toBe(true);
+  });
+
+  it('ne réécrit rien quand aucune variante ne valide le composite', () => {
+    // Garde-fou : sans confirmation par le checksum, la lecture doit rester telle quelle
+    // plutôt que d'être « corrigée » au jugé.
+    const abime = `${L1.slice(0, 20)}S${L1.slice(21)}`;
+    const l2Abime = `${L2.slice(0, 5)}9${L2.slice(6)}`;
+    const lignes = detecterMrz(`${abime}\n${l2Abime}`);
+    if (lignes) expect(parseMrz(lignes).checksums.composite).toBe(false);
+  });
+});
+
+describe('detecterMrz — jamais de lecture fautive certifiée', () => {
+  const L2 = '970675K002774HERVE<<DJAMEL<7303216M4';
+
+  it('ne certifie pas un nom recomposé à partir de parasites du remplissage', () => {
+    // Élargir la fenêtre de recherche a un effet pervers : le composite ne vaut qu'un
+    // chiffre (dix valeurs), donc parmi des centaines de combinaisons, l'une finit par
+    // le satisfaire au hasard — avec un nom faux. Mesuré : « LOISEAU S C C » certifié
+    // à 95 %. Un « suspect » honnête vaut mieux qu'une erreur silencieuse.
+    const abime = 'IDFRALOISEAU<<<<<<<<S<<<<C<<C<<<<<<<';
+    expect(abime.length).toBe(36);
+    const lignes = detecterMrz(`${abime}\n${L2}`);
+    if (!lignes) return;
+    const mrz = parseMrz(lignes);
+    if (mrz.identite.nom?.valeur !== 'LOISEAU') {
+      expect(mrz.checksums.composite).toBe(false);
+    }
   });
 });

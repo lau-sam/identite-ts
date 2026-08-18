@@ -127,9 +127,24 @@ async function tenterMrz(
   // La binarisation élimine les fonds guillochés des documents sécurisés,
   // sans quoi l'OCR de la MRZ échoue (validé sur le spécimen CNI 2021).
   // Deuxième passe sur la bande basse : la MRZ y est toujours, et l'OCR
-  // décroche souvent sur la carte entière (photo, adresse, décor).
-  for (const fraction of [1, 0.45]) {
-    const texte = await ocr.reconnaitre(await copieBinarisee(image, fraction), 'mrz');
+  // décroche souvent sur la carte entière (photo, adresse, décor). Troisième
+  // passe en seuillage adaptatif, pour les fonds inégaux qu'un seuil global ne
+  // sépare pas — sur la bande basse seulement, la MRZ n'est jamais ailleurs.
+  const passes: Array<{ fraction: number; methode: 'otsu' | 'sauvola' }> = [
+    { fraction: 1, methode: 'otsu' },
+    { fraction: 0.45, methode: 'otsu' },
+    { fraction: 0.45, methode: 'sauvola' },
+  ];
+
+  // Une passe peut rendre une MRZ qui se parse mais dont les checksums tombent faux :
+  // l'OCR a confondu un caractère. S'arrêter là fige une lecture fautive — constaté sur
+  // une CNI réelle, bloquée à 47 % de confiance avec nom et prénoms marqués suspects.
+  // On retient donc la meilleure passe, sans dépenser les suivantes quand tout est déjà
+  // valide : une lecture parfaite coûte toujours une seule passe.
+  let meilleur: { resultat: ExtractionResult; lignes: string[]; score: number } | undefined;
+
+  for (const { fraction, methode } of passes) {
+    const texte = await ocr.reconnaitre(await copieBinarisee(image, fraction, methode), 'mrz');
     raw.texteOcr = [raw.texteOcr, texte].filter(Boolean).join('\n');
     const lignes = detecterMrz(texte);
     if (!lignes) continue;
@@ -138,20 +153,31 @@ async function tenterMrz(
     try {
       const mrz = parseMrz(lignes);
       const controles = Object.values(mrz.checksums);
-      const valides = controles.filter(Boolean).length;
-      return {
-        document: mrz.categorie,
-        paysEmetteur: mrz.paysEmetteur,
-        data: mrz.identite,
-        confidence: mrz.valide ? 0.95 : 0.7 * (valides / controles.length),
-        source: 'mrz',
-        raw,
-      };
+      const score =
+        controles.length === 0 ? 0 : controles.filter(Boolean).length / controles.length;
+      if (!meilleur || score > meilleur.score) {
+        meilleur = {
+          resultat: {
+            document: mrz.categorie,
+            paysEmetteur: mrz.paysEmetteur,
+            data: mrz.identite,
+            confidence: mrz.valide ? 0.95 : 0.7 * score,
+            source: 'mrz',
+            raw,
+          },
+          lignes,
+          score,
+        };
+      }
+      if (mrz.valide) break;
     } catch {
       // forme finalement invalide : passe suivante
     }
   }
-  return undefined;
+
+  if (!meilleur) return undefined;
+  raw.lignesMrz = meilleur.lignes;
+  return meilleur.resultat;
 }
 
 async function tenterNir(
@@ -160,11 +186,36 @@ async function tenterNir(
   options: ExtractOptions,
   raw: RawExtraction,
 ): Promise<ExtractionResult | undefined> {
-  const texte = await ocr.reconnaitre(image, 'texte');
-  raw.texteOcr = [raw.texteOcr, texte].filter(Boolean).join('\n');
-  const candidat = detecterNir(texte);
-  if (!candidat) return undefined;
+  // Deux passes, comme pour la MRZ. La carte Vitale porte un fond coloré parcouru d'une
+  // trame de sécurité : sur l'image telle quelle, l'OCR lit la trame et rend du bruit,
+  // alors que le NIR y est imprimé en clair. Le seuillage adaptatif le dégage.
+  //
+  // Sauvola et non Otsu : le seuil unique d'Otsu range la trame et le chiffre du même
+  // côté, et le numéro disparaît — constaté sur une carte réelle. L'ordre n'est pas
+  // indifférent non plus : l'image brute passe d'abord, car tout seuillage peut à
+  // l'inverse effacer un texte fin — c'est un rattrapage, pas un remplacement.
+  const variantes: Array<() => Promise<ImageData>> = [
+    async () => image,
+    () => copieBinarisee(image, 1, 'sauvola'),
+  ];
+  for (const variante of variantes) {
+    const texte = await ocr.reconnaitre(await variante(), 'texte');
+    raw.texteOcr = [raw.texteOcr, texte].filter(Boolean).join('\n');
+    const candidat = detecterNir(texte);
+    if (!candidat) continue;
+    const resultat = await construireVitale(candidat, texte, options, raw);
+    if (resultat) return resultat;
+  }
+  return undefined;
+}
 
+/** Bâtit le résultat « carte vitale » à partir d'un NIR candidat, ou rien s'il est mal formé. */
+async function construireVitale(
+  candidat: string,
+  texte: string,
+  options: ExtractOptions,
+  raw: RawExtraction,
+): Promise<ExtractionResult | undefined> {
   try {
     const nir = parseNir(candidat);
     raw.nir = nir.nir;
@@ -215,8 +266,14 @@ function champNir<T>(valeur: T, checksumValide: boolean): Champ<T> {
  * Copie binarisée (Otsu) de l'image, sans muter l'originale, optionnellement
  * réduite à sa bande basse (`fraction` < 1).
  */
-async function copieBinarisee(image: ImageData, fraction: number): Promise<ImageData> {
-  const { binariser, niveauxDeGris, rognerBas } = await import('./image/preprocess');
+async function copieBinarisee(
+  image: ImageData,
+  fraction: number,
+  methode: 'otsu' | 'sauvola' = 'otsu',
+): Promise<ImageData> {
+  const { binariser, binariserAdaptatif, niveauxDeGris, rognerBas } = await import(
+    './image/preprocess'
+  );
   const zone = fraction < 1 ? rognerBas(image, fraction) : image;
   const data = new Uint8ClampedArray(zone.data);
   const copie =
@@ -224,12 +281,32 @@ async function copieBinarisee(image: ImageData, fraction: number): Promise<Image
       ? new ImageData(data, zone.width, zone.height)
       : ({ width: zone.width, height: zone.height, data } as ImageData);
   niveauxDeGris(copie); // l'image préparée reste en couleur
-  binariser(copie);
+  if (methode === 'sauvola') binariserAdaptatif(copie);
+  else binariser(copie);
   return copie;
 }
 
-/** Tolérance de caractères parasites (décor lu par l'OCR) autour d'une ligne MRZ. */
-const PARASITES_MAX = 3;
+/**
+ * Tolérance de caractères parasites (décor lu par l'OCR) autour d'une ligne MRZ.
+ * Sur une photo réelle, le bord de la carte et le fond partent volontiers en caractères :
+ * des lignes à 42 signes pour 36 attendus ont été mesurées sur une CNI. Élargir ne dégrade
+ * pas la justesse — toutes les fenêtres sont essayées et seule celle qui valide au moins un
+ * checksum est retenue ; cela évite en revanche d'écarter d'emblée la meilleure passe.
+ */
+const PARASITES_MAX = 8;
+
+/**
+ * Variante d'une ligne MRZ dont les parasites isolés du remplissage sont rendus au `<`.
+ *
+ * Un `<` mal binarisé se lit volontiers comme une lettre. Isolée au milieu du remplissage
+ * (`<S<`), elle s'accroche au nom : « …EN » devient « …ENS », et le composite tombe faux.
+ * La variante n'est proposée qu'en concurrence des autres : elle ne l'emporte que si un
+ * checksum la valide, jamais par simple préférence. C'est de la correction prouvée, pas
+ * de la réécriture au jugé.
+ */
+function sansParasiteIsole(ligne: string): string {
+  return ligne.replace(/(?<=<)[A-Z0-9](?=<)/g, '<');
+}
 
 /**
  * Repère des lignes MRZ dans du texte OCR : lignes en `A-Z0-9<` (espaces
@@ -265,11 +342,13 @@ export function detecterMrz(texte: string): string[] | undefined {
  */
 function meilleureCombinaison(candidates: string[], longueur: number): string[] | undefined {
   const fenetresParLigne = candidates.map((ligne) => {
-    const fenetres: string[] = [];
+    const fenetres = new Set<string>();
     for (let debut = 0; debut + longueur <= ligne.length; debut++) {
-      fenetres.push(ligne.slice(debut, debut + longueur));
+      const fenetre = ligne.slice(debut, debut + longueur);
+      fenetres.add(fenetre);
+      fenetres.add(sansParasiteIsole(fenetre));
     }
-    return fenetres;
+    return [...fenetres];
   });
 
   let meilleur: { lignes: string[]; score: number } | undefined;
@@ -283,8 +362,11 @@ function meilleureCombinaison(candidates: string[], longueur: number): string[] 
       // L'en-tête, lui non plus, n'est couvert par aucun checksum en TD2 et
       // TD3 : sans cette pénalité, une fenêtre décalée d'un caractère sur la
       // ligne du nom passe pour parfaitement valide.
+      // La pénalité de forme dépasse le poids d'un checksum, et c'est voulu : mieux
+      // vaut une lecture honnêtement marquée suspecte qu'un nom faux certifié valide.
       const score =
         valides * 1000 -
+        (remplissageNomConforme(mrz.format, combo) ? 0 : 1500) -
         (mrz.identite.dateNaissance ? 0 : 400) -
         (enteteConforme(combo) ? 0 : 300) -
         (mrz.identite.sexe ? 0 : 150) -
@@ -305,6 +387,28 @@ function meilleureCombinaison(candidates: string[], longueur: number): string[] 
  */
 function enteteConforme(lignes: string[]): boolean {
   return /^[A-Z][A-Z<][A-Z][A-Z<]{2}/.test(lignes[0] as string);
+}
+
+/** Zone porteuse du nom et des prénoms, selon le format. */
+function zoneNom(format: MrzResult['format'], lignes: string[]): string {
+  if (format === 'td1') return lignes[2] as string;
+  if (format === 'td3' || format === 'td2') return (lignes[0] as string).slice(5);
+  return (lignes[0] as string).slice(5, 30);
+}
+
+/**
+ * Vrai si la zone nom a la forme canonique : des mots séparés par un ou deux `<`,
+ * puis du remplissage. Une lettre qui réapparaît *après* le remplissage n'est jamais
+ * un nom — c'est du décor lu par l'OCR.
+ *
+ * Ce contrôle est structurel, et il est indispensable. Le composite ne vaut qu'un
+ * chiffre : parmi les centaines de fenêtres et variantes essayées, il s'en trouve
+ * toujours une pour le satisfaire par hasard, avec un nom faux à la clé. Mesuré sur
+ * une carte de test : « LOISEAU S C C » certifié à 95 %. La forme de la zone, elle,
+ * ne se satisfait pas au hasard.
+ */
+function remplissageNomConforme(format: MrzResult['format'], lignes: string[]): boolean {
+  return /^[A-Z]+(?:<{1,2}[A-Z]+)*<*$/.test(zoneNom(format, lignes));
 }
 
 function chiffresZoneNom(format: MrzResult['format'], lignes: string[]): number {
