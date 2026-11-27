@@ -94,10 +94,25 @@ function parseTd3(l: [string, string] | string[]): MrzResult {
   return resultat('td3', identite, checksums, l as string[]);
 }
 
+/**
+ * Numéro de document TD1/TD2, y compris au-delà de 9 caractères (ICAO 9303-5
+ * et 9303-6 §4.2.2) : `<` en position de contrôle signale que la suite du
+ * numéro, puis son chiffre de contrôle, ouvrent les données optionnelles.
+ */
+function numeroDocumentTd(base: string, controle: string, optionnel: string) {
+  const suite = optionnel.split('<')[0] as string;
+  if (controle !== '<' || suite.length < 2) {
+    return { numero: nettoyer(base), valide: checksumIcaoValide(base, controle) };
+  }
+  const numero = base + suite.slice(0, -1);
+  return { numero, valide: checksumIcaoValide(numero, suite.slice(-1)) };
+}
+
 function parseTd1(l: string[]): MrzResult {
   const [l1, l2, l3] = l as [string, string, string];
+  const doc = numeroDocumentTd(l1.slice(5, 14), l1[14] as string, l1.slice(15, 30));
   const checksums: MrzChecksums = {
-    numeroDocument: checksumIcaoValide(l1.slice(5, 14), l1[14] as string),
+    numeroDocument: doc.valide,
     dateNaissance: checksumDate(l2.slice(0, 6), l2[6] as string),
     dateExpiration: checksumDate(l2.slice(8, 14), l2[14] as string),
     composite: checksumIcaoValide(
@@ -112,7 +127,7 @@ function parseTd1(l: string[]): MrzResult {
     ...champSexe(l2[7] as string),
     ...champDate('dateNaissance', dateMrz(l2.slice(0, 6), 'naissance'), checksums.dateNaissance),
     nationalite: champMrz(nettoyer(l2.slice(15, 18)), checksums.composite),
-    numeroDocument: champMrz(nettoyer(l1.slice(5, 14)), checksums.numeroDocument as boolean),
+    numeroDocument: champMrz(doc.numero, checksums.numeroDocument as boolean),
     ...champDate(
       'dateExpiration',
       dateMrz(l2.slice(8, 14), 'expiration'),
@@ -166,8 +181,9 @@ function checksumsValides(resultat: MrzResult): number {
  */
 function parseTd2(l: string[]): MrzResult {
   const [l1, l2] = l as [string, string];
+  const doc = numeroDocumentTd(l2.slice(0, 9), l2[9] as string, l2.slice(28, 35));
   const checksums: MrzChecksums = {
-    numeroDocument: checksumIcaoValide(l2.slice(0, 9), l2[9] as string),
+    numeroDocument: doc.valide,
     dateNaissance: checksumDate(l2.slice(13, 19), l2[19] as string),
     dateExpiration: checksumDate(l2.slice(21, 27), l2[27] as string),
     // Le composite exclut la nationalité (11-13) et le sexe (21) — ICAO 9303-6 §4.2.4.
@@ -183,7 +199,7 @@ function parseTd2(l: string[]): MrzResult {
     ...champSexe(l2[20] as string),
     ...champDate('dateNaissance', dateMrz(l2.slice(13, 19), 'naissance'), checksums.dateNaissance),
     nationalite: champMrz(nettoyer(l2.slice(10, 13)), checksums.composite),
-    numeroDocument: champMrz(nettoyer(l2.slice(0, 9)), checksums.numeroDocument as boolean),
+    numeroDocument: champMrz(doc.numero, checksums.numeroDocument as boolean),
     ...champDate(
       'dateExpiration',
       dateMrz(l2.slice(21, 27), 'expiration'),

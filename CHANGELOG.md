@@ -1,5 +1,15 @@
 # Changelog
 
+## Non publié
+
+### Corrections
+
+- **Les numéros de document de plus de 9 caractères étaient tronqués en TD1 et TD2**
+  (cartes d'identité belges et portugaises, notamment), et la MRZ déclarée invalide.
+  ICAO 9303-5 et 9303-6 §4.2.2 placent alors `<` en position de contrôle, puis la suite du
+  numéro et son chiffre de contrôle en tête des données optionnelles : `numeroDocument`
+  porte désormais le numéro complet, contrôlé sur toute sa longueur (#8).
+
 ## 0.4.1 — à paraître
 
 ### Corrections

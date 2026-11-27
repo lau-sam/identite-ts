@@ -79,6 +79,47 @@ describe('parseMrz TD2 (titre de séjour, carte officielle)', () => {
   });
 });
 
+// Numéro de document de plus de 9 caractères (cartes belges, portugaises) :
+// ICAO 9303-5 §4.2.2 et 9303-6 §4.2.2 — `<` en position de contrôle, la suite
+// du numéro et son chiffre de contrôle en tête des données optionnelles.
+// Spécimen 9303-11 annexe D.2 ; TD2 fictif, checksums recalculés.
+describe('parseMrz numéro de document long', () => {
+  it('reconstitue le numéro complet en TD1', () => {
+    const r = parseMrz([
+      'I<UTOD23145890<7349<<<<<<<<<<<',
+      '7408122F1204159UTO<<<<<<<<<<<6',
+      'ERIKSSON<<ANNA<MARIA<<<<<<<<<<',
+    ]);
+    expect(r.identite.numeroDocument).toEqual({
+      valeur: 'D23145890734',
+      source: 'mrz',
+      checksumValide: true,
+    });
+    expect(r.valide).toBe(true);
+  });
+
+  it('reconstitue le numéro complet en TD2', () => {
+    const r = parseMrz([
+      'I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<',
+      'D23145890<UTO7408122F12041597349<<<2',
+    ]);
+    expect(r.format).toBe('td2');
+    expect(r.identite.numeroDocument?.valeur).toBe('D23145890734');
+    expect(r.identite.numeroDocument?.checksumValide).toBe(true);
+    expect(r.valide).toBe(true);
+  });
+
+  it('signale un contrôle faux sur la partie longue', () => {
+    const r = parseMrz([
+      'I<UTOD23145890<7348<<<<<<<<<<<',
+      '7408122F1204159UTO<<<<<<<<<<<6',
+      'ERIKSSON<<ANNA<MARIA<<<<<<<<<<',
+    ]);
+    expect(r.identite.numeroDocument?.valeur).toBe('D23145890734');
+    expect(r.identite.numeroDocument?.checksumValide).toBe(false);
+  });
+});
+
 // MRZ TD2 fictive (checksums recalculés) dont le code document commence par
 // « ID », comme l'ancienne CNI française : les deux formats partagent la forme
 // 2×36, seuls les checksums peuvent les départager.
